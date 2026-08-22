@@ -91,15 +91,16 @@ TS-Version), und der Konformitätstest muss **beide** Python-Kopien prüfen.
 
 ## Not yet specified
 
-- **Verhalten bei sehr großen Dateien.** Der `LTDecoder` hält alle gelösten
-  Blöcke im Speicher; bei 64 MB dieselbe Frage wie beim Sender. Beurteilbar
-  erst am laufenden Empfänger.
-- **Konkrete Windows-/Linux-Aufnahme-Backends.** In Scope (Nutzer will
-  Unabhängigkeit), aber nicht spezifizierbar, bevor die macOS-Aufnahme hinter
-  ihrer Schnittstelle steht.
-- **Mehrdeutige Bereiche.** Was, wenn im Bereich zeitweise kein Code oder
-  mehrere fremde Ströme sichtbar sind. Hängt an der Klassifizierung
-  (`classifyFrame`) und wird erst mit der Portierung greifbar.
+Die drei Nebelflecken von der Kartierung sind aufgelöst — der laufende
+Empfänger und die portierte Decode-Hälfte haben sie scharf genug gemacht, um
+Tickets zu sein (mehrdeutige Bereiche, große Dateien, Aufnahme-Backends).
+
+- **Kalibrierung der Schwellen an echtem HDX.** Die Empfehlung hängt an
+  px/Modul ≥ 6 (Rettung) bzw. ≥ 8 (Aufwärtsrat). Beide stammen aus einer
+  H.264-Simulation, die „Citrix-Robustheit" selbst als über echtes HDX zu
+  bestätigen markiert hat. Ob nachjustiert werden muss und wie, ist erst
+  spezifizierbar, wenn der Citrix-Lauf aus „Den Empfänger bauen" Zahlen
+  geliefert hat.
 
 ## Out of scope
 
