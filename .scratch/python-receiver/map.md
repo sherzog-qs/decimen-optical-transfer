@@ -1,0 +1,107 @@
+# Karte: Python-Empfänger (Bildschirmbereich)
+
+Label: `wayfinder:map`
+
+## Destination
+
+Ein Ordner `python-receiver/` im Repo, standalone (`uv sync`,
+`uv run decimen-receive`): man zieht einmal einen Bildschirmbereich auf (wie
+Cmd+Shift+4), und das Programm wertet **live aus, was in diesem Bereich ist** —
+gleichgültig, was darunter liegt (Citrix-Fenster, VM, Video, lokaler Sender).
+Es dekodiert den Fountain-Strom (auch Grids mit 2/4/6 Codes), zeigt während des
+Empfangs Fortschritt und Statistik, empfiehlt bei schlechtem Empfang
+Sender-Einstellungen, und speichert am Ende die Datei über einen Dialog bzw.
+zeigt einen Textschnipsel an.
+
+Erreicht ist das Ziel, wenn eine Datei, die `decimen-send` **durch eine
+Citrix-Sitzung hindurch** zeigt, SHA-256-verifiziert herausfällt.
+
+## Notes
+
+**Ausführung gehört zu dieser Karte** — wie bei `python-sender/`. Endet nicht
+bei einer Spezifikation, sondern beim lauffähigen Ordner.
+
+**`python-sender/` ist die Vorlage.** Aufbau, Stil, Werkzeugkette (uv, pygame,
+segno-Analogon), die Karte darüber (`.scratch/python-sender/`) und ihre
+Lehren gelten hier genauso. Insbesondere: Immediate-Mode-UI in pygame, alles
+in einem Prozess, `caffeinate -w`, `only-managed` Python, Konformitätstest
+lokal statt in CI.
+
+**Domäne:** unverändert — `docs/technical/protocol.md`,
+`docs/technical/golden-vectors.md` (inkl. des Abschnitts „Fountain carousel",
+den der Sender hinzugefügt hat), `docs/technical/architecture.md`. Die
+Empfangsseite von `receive/` und `shared/` ist die Vorlage für die Portierung.
+
+**Zwei Probleme, nicht eins.** Der Sender hatte nur das Wire-Format. Der
+Empfänger hat es auch — die **Decode-Hälfte**: `parseFrame`, `classifyFrame`,
+`LTDecoder`, `unpackFile`, `verifyFile`, gunzip — **plus ein Bildproblem**:
+Citrix liefert keinen pixelgenauen Strom.
+
+**Citrix ist kein Code-Pfad, sondern ein Bildqualitäts-Fall.** Der Empfänger
+ist Citrix-agnostisch: er greift einen Bereich ab und dekodiert, was er sieht,
+ohne je zu fragen, was darunter liegt. Es gibt keinen Citrix-Modus und keine
+Fensterauswahl — ein Bereich, ein Decoder. Citrix zählt nur, weil HDX bewegte
+Regionen als H.264/H.265 kodiert und erst nachschärft, wenn die Bewegung
+aufhört — ein endloses Karussell erreicht die scharfe Stufe nie. Das senkt die
+**Bildqualität** (Blockartefakte an Modulkanten, weniger Frames, womöglich
+skaliert), nicht die Logik. Folge davon, und der einzige Grund, warum Citrix
+auf der Karte steht: der Empfänger muss wissen, welche **Sender-Einstellungen**
+(fps, Bytes je Frame, ECC, Grid) die Kompression überstehen, um sie zu
+empfehlen — auf Citrix selbst hat der Nutzer wenig Einfluss. Ein lokaler Sender
+ist der pixelgenaue Testfall zum Entwickeln; bestehen muss der Empfänger über
+Citrix.
+
+**Bildschirmaufnahme-Berechtigung ist Voraussetzung.** Gemessen: ohne sie
+zählt macOS zwar Fenster auf, verbirgt aber Titel und liefert bei
+Einzelaufnahme `kein Bild` (ganzer Bildschirm geht). Der Nutzer erteilt sie
+dem Terminal, damit die Aufnahme auch in der Entwicklung prüfbar ist. Ein
+**Bereich** (kein Fenster) wird aufgenommen — das umgeht Fensteraufzählung
+und verborgene Titel, braucht aber dieselbe Berechtigung.
+
+**Plattform: macOS zuerst, Portabilität als Struktur.** Gebaut und
+abgenommen auf macOS. „Unabhängig wäre gut" (Nutzer) heißt: die Aufnahme
+liegt hinter einer schmalen Schnittstelle (Bereich → RGB-Bild), sodass ein
+Windows- oder Linux-Backend nachrüstbar ist, ohne Decode, UI und Fountain
+anzufassen. macOS 26.5.2; `CGWindowListCreateImage` ist seit macOS 14
+veraltet, `ScreenCaptureKit` der unterstützte Weg — welches Backend es wird,
+misst Ticket 01.
+
+**Standalone heißt zweite Kopie des Protokolls.** `python-sender/decimen/`
+und `python-receiver/decimen/` teilen `fnv1a`, `splitmix32`, `frame_seed`,
+`frame_composition`, das Container-Format. Der Nutzer hat „standalone"
+zweimal gefordert — also liegt das Wire-Format bewusst doppelt (plus die
+TS-Version), und der Konformitätstest muss **beide** Python-Kopien prüfen.
+
+**Skills pro Session:** `/grilling` und `/domain-modeling` bei Entscheidungen,
+`/prototype` bei Mess- und Layout-Tickets, `/tdd` für den Konformitätstest.
+
+## Decisions so far
+
+- [Bildschirmbereich abgreifen: welche Technik, wie schnell?](issues/01-aufnahme-technik.md) — **Quartz `CGWindowListCreateImage`, physische Pixel**, hinter der Schnittstelle `ScreenRegion` (Punkte → RGB-numpy). 123 fps, weit über Bedarf; mss raus (nur logische Punkte), ScreenCaptureKit als Upgrade-Pfad. Ende-zu-Ende belegt: grab + Konversion + zxing hält **62/s** und die Bytes stimmen mit der Quelle überein.
+
+## Not yet specified
+
+- **Umgang mit dem Stream-Neustart des Senders.** Jede Reglerdrehung am
+  Sender würfelt eine neue `sessionId` und setzt `seq` auf 0 — der Empfänger
+  muss das an der Stream-Identität erkennen und den Decoder zurücksetzen,
+  sonst mischt er zwei Ströme. Wird scharf, sobald die Decode-Architektur
+  (Ticket 03) steht.
+- **Verhalten bei sehr großen Dateien.** Der `LTDecoder` hält alle gelösten
+  Blöcke im Speicher; bei 64 MB dieselbe Frage wie beim Sender. Beurteilbar
+  erst am laufenden Empfänger.
+- **Konkrete Windows-/Linux-Aufnahme-Backends.** In Scope (Nutzer will
+  Unabhängigkeit), aber nicht spezifizierbar, bevor die macOS-Aufnahme hinter
+  ihrer Schnittstelle steht.
+- **Mehrdeutige Bereiche.** Was, wenn im Bereich zeitweise kein Code oder
+  mehrere fremde Ströme sichtbar sind. Hängt an der Klassifizierung
+  (`classifyFrame`) und wird erst mit der Portierung greifbar.
+
+## Out of scope
+
+- **Kamera-Empfang.** Ausdrücklich nicht: der Empfang läuft direkt vom
+  Bildschirm, nicht über eine Kamera. Das ist der bestehende `receive/`-Pfad
+  der Web-App.
+- **Senden.** Ist `python-sender/`.
+- **Vorschau und Video-Wiedergabe im Fenster.** Q5: Fortschritt und
+  Speichern, nicht die Browser-Eigenschaften des Web-Empfängers.
+- **Lokalisierung.** Englisch, wie beim Sender.
