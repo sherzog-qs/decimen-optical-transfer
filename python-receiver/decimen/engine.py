@@ -26,6 +26,11 @@ from . import protocol as p
 from . import send_settings_hint as hint
 from .fountain import LTDecoder
 
+# How long the followed stream may stay silent before the next one to show up
+# takes over. Long enough that a dropped second over Citrix is not a handover,
+# short enough that restarting the sender does not feel stuck.
+STREAM_QUIET_SECONDS = 2.0
+
 
 @dataclass
 class Snapshot:
@@ -35,12 +40,13 @@ class Snapshot:
     frames_needed: int = 0          # ~k * 1.15, the completion target
     k: int = 0
     block_len: int = 0
-    grid_codes: int = 0
+    grid_codes: int = 0              # codes of the incumbent stream, not of the grab
     px_per_module: float = 0.0
     catch_rate: float = 0.0         # useful new frames per second
     compression: str = "—"
     ecc: str = "L"                  # as zxing read it off the code itself
     complete: bool = False
+    ambiguous: bool = False          # more than one stream visible in the region
     verdict_message: str | None = None
     last_frame: np.ndarray | None = None   # the raw region, for the preview
     file: "p.OpticalFile | None" = None
@@ -59,6 +65,8 @@ class ReceiverEngine:
         self._thread: threading.Thread | None = None
         self._catch_window: list[float] = []
         self._last_hash: bytes | None = None
+        self._identity_seen: float = 0.0     # when the incumbent last showed up
+        self._ambiguous_until: float = 0.0   # holds the warning past a single grab
 
     def set_region(self, region) -> None:
         """Re-drag mid-transfer: the decoder keeps going, only the source moves."""
@@ -107,24 +115,42 @@ class ReceiverEngine:
             np.ascontiguousarray(frame), formats=zxingcpp.BarcodeFormat.QRCode)
         now = time.perf_counter()
         useful = 0
-        codes_seen = 0
         px_per_module = 0.0
         ecc = ""
+        foreign_msg = None
+        # Grouped by stream, because "how many codes are in the picture" and
+        # "how many codes is the sender laying out" are different questions the
+        # moment a second stream is in the region. A real grid is n codes under
+        # ONE identity; two senders are one code each under two.
+        by_stream: dict[str, list] = {}
         for r in results:
-            codes_seen += 1
             wire = bytes(r.bytes)
             parsed = p.parse_frame(wire)
             if parsed is None:
-                verdict = p.classify_frame(wire)
-                msg = p.frame_verdict_message(verdict)
-                if msg:
-                    with self._lock:
-                        self._snap.verdict_message = msg
+                foreign_msg = foreign_msg or p.frame_verdict_message(p.classify_frame(wire))
                 continue
             header, block = parsed
+            by_stream.setdefault(p.stream_identity(header), []).append((r, header, block))
+
+        incumbent = self._incumbent(by_stream, now)
+        for r, header, block in by_stream.get(incumbent, ()):
             useful += self._accept(header, block)
             px_per_module = max(px_per_module, self._px_per_module(r, len(results)))
             ecc = r.ec_level or ecc
+        codes_seen = len(by_stream.get(incumbent, ()))
+
+        with self._lock:
+            # Latched for the same couple of seconds a handover waits, so a
+            # neighbouring code that reads in one grab and not the next does not
+            # make the warning flicker.
+            if len(by_stream) > 1:
+                self._ambiguous_until = now + STREAM_QUIET_SECONDS
+            self._snap.ambiguous = now < self._ambiguous_until
+            # A foreign or outdated code is worth reporting only when it is the
+            # only thing there — next to a running stream it would overwrite the
+            # status line the user actually needs.
+            if foreign_msg and not by_stream:
+                self._snap.verdict_message = foreign_msg
 
         # Catch rate over a 1s window of USEFUL frames (new, non-redundant).
         for _ in range(useful):
@@ -148,6 +174,25 @@ class ReceiverEngine:
                 if d.is_complete and not self._snap.complete:
                     self._finish(d)
 
+    def _incumbent(self, by_stream: dict, now: float) -> str | None:
+        """Which stream this receiver is following.
+
+        The decoder holds one stream and ignores the others, rather than
+        resetting on every identity it sees: with two senders in the region the
+        identity flips inside a single grab, and resetting on that leaves the
+        peel permanently at zero, silently. The post only falls vacant when the
+        incumbent has gone quiet — which is also what a sender restart looks
+        like, so one rule carries both cases.
+        """
+        with self._lock:
+            current = self._identity
+            if current in by_stream:
+                self._identity_seen = now
+                return current
+            if current is not None and now - self._identity_seen < STREAM_QUIET_SECONDS:
+                return current          # a gap, not a handover — wait it out
+        return next(iter(by_stream), None)
+
     def _accept(self, header: "p.FrameHeader", block: bytes) -> int:
         """Feed one frame, resetting the decoder on a stream change. Returns 1
         if it was a useful new frame, else 0."""
@@ -155,6 +200,7 @@ class ReceiverEngine:
         with self._lock:
             if identity != self._identity:
                 self._identity = identity
+                self._identity_seen = time.perf_counter()
                 self._decoder = LTDecoder(header.k, header.block_len,
                                           header.session_id, header.total_len)
                 self._snap.complete = False

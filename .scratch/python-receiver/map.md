@@ -89,6 +89,8 @@ TS-Version), und der Konformitätstest muss **beide** Python-Kopien prüfen.
 
 - [Empfänger-Fenster: Fortschritt, Statistik, Empfehlung, Speichern](issues/06-empfaenger-fenster-design.md) — **ein pygame-Fenster**, Seitenleiste plus **Live-Vorschau** des Bereichs (zum Nachjustieren über Citrix). Fortschritt über **gesammelte Frames** (der Code warnt vor dem Block-Balken); Fangrate zählt `frames_new − frames_redundant`. Empfehlung **nur bei schlechtem Empfang**, abgeleitet aus gemessener px/Modul. Am Ende Speicherdialog, SHA-256 vor dem Anbieten verifiziert, sonst verworfen.
 
+- [Mehrdeutige Bereiche: kein Code, oder zwei Ströme gleichzeitig](issues/09-mehrdeutige-bereiche.md) — **ein Inkumbent, Schweigen als einziger Wechselgrund**. Erkennung pro Grab (ein Grid ist *n* Codes unter einer Identität, zwei Sender je einer unter zweien), der erste geparste Frame gewinnt, fremde Frames werden verworfen statt als Reset gedeutet, Wechsel erst nach 2 s Stille — dieselbe Regel trägt den Sender-Neustart. Behob einen stummen Totalausfall: bei zwei sichtbaren Strömen setzte der Decoder in jedem Grab zurück und kam nie an.
+
 ## Not yet specified
 
 Die drei Nebelflecken von der Kartierung sind aufgelöst — der laufende

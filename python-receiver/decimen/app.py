@@ -129,6 +129,11 @@ class ReceiverApp:
         while the catch rate is low, and — once the stream has settled and is
         clearly healthy — what the margin above the threshold would buy."""
         now = time.perf_counter()
+        if snap.ambiguous and not snap.complete:
+            # Ahead of both other lines: a second stream is why the transfer is
+            # crawling, and no sender setting fixes it.
+            return ("Two streams in the region — decoding one of them. "
+                    "Press Space and drag tighter around the one you want.")
         if snap.complete or snap.frames_collected == 0:
             self._low_since = self._high_since = None
             return None
@@ -285,7 +290,7 @@ class _Empty:
     px_per_module = catch_rate = 0.0
     compression = "—"
     ecc = "L"
-    complete = sha256_ok = False
+    complete = sha256_ok = ambiguous = False
     verdict_message = None
     last_frame = None
     file = None
