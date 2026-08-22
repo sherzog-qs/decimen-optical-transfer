@@ -12,6 +12,7 @@ thing the user can change — and appears only when the catch rate stays low.
 
 from __future__ import annotations
 
+import argparse
 import os
 import pathlib
 import time
@@ -22,6 +23,7 @@ import pygame
 from . import platform_bits as plat
 from . import send_settings_hint as hint
 from . import ui as theme
+from .capture import ScreenRegion, has_screen_permission, request_screen_permission
 from .engine import ReceiverEngine
 from .protocol import snippet_text
 from .select_region import select_region
@@ -63,7 +65,8 @@ def time_left(snap) -> str:
 
 
 class ReceiverApp:
-    def __init__(self):
+    def __init__(self, region: tuple[int, int, int, int] | None = None,
+                 out_dir: str | None = None):
         pygame.init()
         pygame.key.set_repeat(0)
         self.screen = pygame.display.set_mode((SIDEBAR_W + PREVIEW_W, MIN_HEIGHT))
@@ -78,7 +81,6 @@ class ReceiverApp:
         # Without screen-recording permission, capture sees only the desktop —
         # other windows are invisible. Check up front and, if missing, register
         # in the list and tell the user plainly rather than capturing nothing.
-        from .capture import has_screen_permission, request_screen_permission
         if has_screen_permission():
             self.status = "Press Space to select the region the QR stream plays in."
             self.status_error = False
@@ -95,8 +97,11 @@ class ReceiverApp:
         # dialog every frame, so the guard hangs on the file object, not on
         # whether a path came back.
         self._offered = None
+        self._out_dir = out_dir
         self._low_since: float | None = None
         self._high_since: float | None = None
+        if region and not self.blocked:
+            self._start_on(ScreenRegion(*region))
         self.running = True
 
     # ------------------------------------------------------------ region
@@ -117,14 +122,18 @@ class ReceiverApp:
         plat.set_icon()
         if sel is None:
             return
-        from .capture import ScreenRegion
-        self.region = ScreenRegion(*sel)
+        self._start_on(ScreenRegion(*sel))
+
+    def _start_on(self, region) -> None:
+        """Point the engine at a region — the first one starts it, later ones
+        only move it, so a re-drag mid-transfer keeps the decoder going."""
+        self.region = region
         if self.engine is None:
             self.engine = ReceiverEngine(self.region)
             self.engine.start()
             self.awake.on()
         else:
-            self.engine.set_region(self.region)     # re-drag, decoder keeps going
+            self.engine.set_region(self.region)
         self.status = "Watching the region. Point it at the QR stream."
         self.status_error = False
 
@@ -242,7 +251,7 @@ class ReceiverApp:
         if snap.file.is_snippet:
             self.status = f"Snippet: {snippet_text(snap.file)}"
             return
-        path = plat.save_dialog(snap.file.name)
+        path = plat.save_dialog(snap.file.name, self._out_dir)
         if path:
             pathlib.Path(path).write_bytes(snap.file.data)
             self.status = f"Saved to {pathlib.Path(path).name}."
@@ -307,6 +316,24 @@ class _Empty:
 _EMPTY = _Empty()
 
 
-def main() -> int:
-    ReceiverApp().run()
+def _region(text: str) -> tuple[int, int, int, int]:
+    parts = [int(n) for n in text.replace(" ", "").split(",")]
+    if len(parts) != 4 or parts[2] <= 0 or parts[3] <= 0:
+        raise argparse.ArgumentTypeError("expected x,y,w,h with a positive size")
+    return tuple(parts)
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="decimen-receive",
+        description="Receive a file over light: drag a screen region and decode "
+                    "the QR stream playing inside it.")
+    # Shortcuts into the same window, not a second headless mode: the region can
+    # still be re-dragged with Space, and --out only opens the save panel there.
+    parser.add_argument("--region", type=_region, metavar="X,Y,W,H",
+                        help="start on this region instead of dragging one")
+    parser.add_argument("--out", metavar="DIR",
+                        help="open the save panel in this folder")
+    args = parser.parse_args(argv)
+    ReceiverApp(region=args.region, out_dir=args.out).run()
     return 0

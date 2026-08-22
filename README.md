@@ -108,7 +108,24 @@ uv run decimen-send            # or: uv run decimen-send report.pdf --fps 24
 A phone on decimen.app cannot tell the two senders apart — same fountain
 carousel, same frame header, same container, same SHA-256, held to
 [golden vectors](docs/technical/golden-vectors.md) and to a round trip through
-the TypeScript decoder itself. It sends only; the receiver stays here.
+the TypeScript decoder itself. It sends only.
+
+### Receiving off a screen, without a camera
+
+[`python-receiver/`](python-receiver/README.md) receives the same stream
+straight off a **screen region** — drag a rectangle the way `Cmd+Shift+4` does,
+and whatever plays inside it gets decoded:
+
+```bash
+cd python-receiver
+uv sync
+uv run decimen-receive         # Space, drag a rectangle, watch it arrive
+```
+
+For the case a camera cannot serve: a file that has to come out of a remote
+session onto the machine in front of you. Accepted through a real Citrix
+session, SHA-256 verified. It is agnostic about what is underneath — there is
+no Citrix mode, just a region and a decoder.
 
 ## Similar projects
 

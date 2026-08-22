@@ -58,13 +58,18 @@ class KeepAwake:
             self._proc = None
 
 
-def save_dialog(default_name: str) -> str | None:
+def save_dialog(default_name: str, directory: str | None = None) -> str | None:
     """A native Save panel. macOS via osascript (Standard Additions, no
-    automation permission). Returns a path or None if cancelled."""
+    automation permission). Returns a path or None if cancelled.
+
+    `directory` only opens the panel there — the user still names the file and
+    can go elsewhere. A shortcut into the same dialog, not a way around it."""
     if platform.system() != "Darwin":
         return None
+    where = (f' default location POSIX file "{directory}"'
+             if directory and pathlib.Path(directory).is_dir() else "")
     script = (f'POSIX path of (choose file name with prompt '
-              f'"Save the received file" default name "{default_name}")')
+              f'"Save the received file" default name "{default_name}"{where})')
     try:
         done = subprocess.run(["osascript", "-e", script],
                               capture_output=True, text=True, timeout=300)

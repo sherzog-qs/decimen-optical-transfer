@@ -97,6 +97,8 @@ TS-Version), und der Konformitätstest muss **beide** Python-Kopien prüfen.
 
 - [Den Empfänger bauen](issues/07-empfaenger-bauen.md) — **abgenommen, beide Hälften**: lokal pixelgenau und durch eine echte Citrix-Sitzung, SHA-256-verifiziert. Der Citrix-Lauf lief mit den GUI-Standardwerten, also **4 px/Modul** — mitten in der Lücke, die „Citrix-Robustheit" zwischen „≥6 robust" und „≤3 bricht" offen gelassen hatte. Der Feldversuch war zugleich die letzte Fehlerquelle: Speicherdialog-Schleife, fehlender Durchsatz, und die Zwei-Ströme-Regel kamen erst hier heraus.
 
+- [Verpackung: uv, Startbefehl, README, Repo-Verweise](issues/08-verpackung.md) — **der Ordner ist zu**: `uv sync` + `uv run decimen-receive` in einer bloßen Kopie belegt, `--region`/`--out` als Abkürzungen ins selbe Fenster, README samt Berechtigung und Citrix-Zahlen, Verweise aus Haupt-README und `architecture.md`. Der Kern war der Konformitätstest: er ruft die geteilten Primitive jetzt **aus beiden Python-Ordnern nebeneinander** auf (167 → 223 Prüfungen), denn nichts sonst hält die zwei Kopien zusammen.
+
 ## Not yet specified
 
 Die drei Nebelflecken von der Kartierung sind aufgelöst — der laufende

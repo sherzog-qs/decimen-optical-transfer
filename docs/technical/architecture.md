@@ -76,8 +76,30 @@ mask and version locking) and `shared/qr-raster.ts`. No decoder, and
 deliberately not `dlog`/`solitonCdf`/`frameIndices`: those are the v1
 robust-soliton stream, unemitted since wire v2.
 
-**Two implementations, one wire format.** `python-sender/tests/` holds a
+**Three implementations, one wire format.** `python-sender/tests/` holds a
 conformance test against the golden vectors and a round trip through the real
-TypeScript decoder. Neither runs in CI, by choice — run them by hand after
-touching `fountain.ts`, `protocol.ts` or `frame-capacity.ts`, because a drift
-there raises no exception anywhere; the transfer just never completes.
+TypeScript decoder; `python-receiver/tests/` holds the mirror of both, plus a
+group that calls the two Python copies of the shared primitives side by side —
+they are standalone folders, so nothing else stops them drifting apart. None of
+it runs in CI, by choice — run them by hand after touching `fountain.ts`,
+`protocol.ts` or `frame-capacity.ts`, because a drift there raises no exception
+anywhere; the transfer just never completes.
+
+## Second receiver (`python-receiver/`)
+
+A receiver that reads the stream off a **screen region** rather than through a
+camera: the user drags a rectangle, a background thread grabs it and decodes
+whatever is inside, and the pygame window only reads snapshots and draws. It
+ports the **receiving** half of `shared/` — `protocol.ts`, `fountain.ts`,
+`frame-capacity.ts` — with no encoder and no camera path.
+
+Capture is Quartz behind a one-method interface (`ScreenRegion`: a rectangle in
+points → an RGB array), which is the seam a Windows or Linux backend slots into
+without touching decode, window or fountain.
+
+**Citrix is a picture-quality case, not a code path.** The receiver never learns
+what is underneath the region. It matters only because HDX encodes moving
+regions as H.264 and never reaches its sharp stage on an endless carousel, so
+the receiver measures px/module and recommends the *sender* settings that would
+survive it — in both directions, since the same measurement says when there is
+margin to spend as well as when there is none.

@@ -19,7 +19,7 @@ from decimen import app as a
 calls = 0
 
 
-def _dialog(_name):
+def _dialog(_name, _dir=None):
     global calls
     calls += 1
     return None            # the user presses Cancel, every time
@@ -34,6 +34,7 @@ def test_cancel_offers_once():
     a.plat.save_dialog = _dialog
     app = a.ReceiverApp.__new__(a.ReceiverApp)
     app._offered = None
+    app._out_dir = None
     app.awake = types.SimpleNamespace(off=lambda: None)
     app.status = ""
 

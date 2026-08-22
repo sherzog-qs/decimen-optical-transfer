@@ -31,9 +31,15 @@ from decimen.fountain import LTDecoder, cycle_length, frame_composition
 def _load_sender():
     """Load python-sender/decimen as a separate package tree, so its modules do
     not collide with this receiver's identically-named `decimen`. The two are
-    standalone copies; the test's whole job is to make them meet."""
+    standalone copies; the test's whole job is to make them meet.
+
+    None when the sibling folder is absent — this folder is meant to be copied
+    somewhere on its own and still run, so the groups that need the sender skip
+    with a word rather than a traceback."""
     import importlib.util, types
     root = HERE.parent.parent / "python-sender" / "decimen"
+    if not root.is_dir():
+        return None
     pkg = types.ModuleType("sender_decimen")
     pkg.__path__ = [str(root)]
     sys.modules["sender_decimen"] = pkg
@@ -51,6 +57,15 @@ def _load_sender():
 SENDER = _load_sender()
 
 checks = 0
+
+
+def _no_sender() -> bool:
+    """True — and says so — when python-sender/ is not beside this folder. It
+    is a sibling, not a dependency: the receiver runs alone, so the groups that
+    need both copies say they were skipped instead of failing."""
+    if SENDER is None:
+        print("      (skipped: python-sender/ is not next to this folder)")
+    return SENDER is None
 
 
 def check(cond, label):
@@ -130,6 +145,8 @@ def test_stream_identity():
 # ---------------------------------------------------------- container decode
 
 def test_container_roundtrip():
+    if _no_sender():
+        return
     """unpack_file reverses the sender's pack_file, byte for byte."""
     sp = SENDER["protocol"]
     # Incompressible, so this exercises the compression="none" path. A SHA-256
@@ -192,6 +209,8 @@ def payload_of(n):
 
 
 def test_roundtrip_against_python_sender():
+    if _no_sender():
+        return
     """The encounter point within Python: the sender's LTEncoder produces
     frames, this LTDecoder rebuilds the file, over deterministic frame loss."""
     sp = SENDER["protocol"]
@@ -226,6 +245,49 @@ def test_roundtrip_against_python_sender():
     check(hashlib.sha256(recovered).digest() == hashlib.sha256(original).digest(),
           "sha256 matches")
     check(dec.frames_new <= enc.k * 1.3, "overhead under 1.3x")
+
+
+def test_the_two_python_copies_agree():
+    """The wire format lives twice in this repo, on purpose — python-sender and
+    python-receiver are each standalone. Nothing makes the copies agree except
+    this: the shared primitives are called side by side and must return the
+    same thing. A drift here is silent, and the end-to-end roundtrip below only
+    catches it where the paths happen to overlap.
+    """
+    if _no_sender():
+        return
+    sp, sf = SENDER["protocol"], SENDER["fountain"]
+    from decimen import fountain as rf
+    from decimen.frame_capacity import block_length as r_block
+    s_block = SENDER["frame_capacity"].block_length
+
+    for data in (b"", b"a", b"decimen", bytes(range(256)), b"\xff" * 1000):
+        check(sp.fnv1a(data) == p.fnv1a(data), f"fnv1a agrees on {len(data)} bytes")
+
+    for seed in (0, 1, 0xDEADBEEF, 0xFFFFFFFF, 4242):
+        a, b = sp.splitmix32(seed), p.splitmix32(seed)
+        check([a() for _ in range(8)] == [b() for _ in range(8)],
+              f"splitmix32 agrees from seed {seed}")
+
+    for session in (0, 4242, 0xFFFF):
+        for seq in (0, 1, 999, 65535):
+            check(sf.frame_seed(session, seq) == rf.frame_seed(session, seq),
+                  f"frame_seed agrees at {session}/{seq}")
+
+    for k in (1, 2, 7, 63, 358, 22897):
+        check(sf.cycle_length(k) == rf.cycle_length(k), f"cycle_length agrees at k={k}")
+        for seq in (0, 3, 1000):
+            check(sf.frame_composition(k, 4242, seq) == rf.frame_composition(k, 4242, seq),
+                  f"frame_composition agrees at k={k} seq={seq}")
+
+    for frame_bytes in (500, 1000, 1465, 1850, 2331, 2953):
+        check(s_block(frame_bytes) == r_block(frame_bytes),
+              f"block_length agrees at {frame_bytes}")
+
+    check(sp.HEADER_LEN == p.HEADER_LEN, "header length agrees")
+    check(sp.FILE_HEADER_LEN == p.FILE_HEADER_LEN, "container header length agrees")
+    check(sp.FILE_MAGIC == p.FILE_MAGIC, "container magic agrees")
+    check(sp.MAX_FILE_BYTES == p.MAX_FILE_BYTES, "file size ceiling agrees")
 
 
 if __name__ == "__main__":
