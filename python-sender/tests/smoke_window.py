@@ -103,8 +103,34 @@ def drive(pygame, p, app) -> int:
     assert app.source is None and app.status_error, app.status
     print(f"  Kapazitaet      abgefangen: {app.status[:58]}...")
 
+    check_cli()
     print("\nSender-Fenster: gezeichnet, geklickt, gestreamt, umgestellt, beendet.")
     return 0
+
+
+def check_cli() -> None:
+    """Die Argumente sind eine Abkuerzung in dieselbe Oberflaeche, kein
+    zweiter Betriebsmodus — also darf nichts durchgehen, was die Bedienleiste
+    nicht auch anbietet."""
+    from decimen.app import _parse
+
+    default = _parse([])
+    assert default.file is None and default.fps == 60 and default.frame_bytes == 2953
+
+    given = _parse(["/tmp/x.pdf", "--fps", "24", "--bytes", "1465",
+                    "--ecc", "M", "--codes", "4", "--size", "600"])
+    assert str(given.file) == "/tmp/x.pdf"
+    assert (given.fps, given.frame_bytes, given.ecc, given.codes, given.size) \
+        == (24, 1465, "M", 4, 600)
+
+    for bad in (["--fps", "45"], ["--bytes", "2000"], ["--ecc", "X"],
+                ["--codes", "3"]):
+        try:
+            _parse(bad)
+            raise AssertionError(f"{bad} haette abgewiesen werden muessen")
+        except SystemExit:
+            pass
+    print("  CLI             Vorgaben, Uebernahme und vier Abweisungen geprueft")
 
 
 if __name__ == "__main__":

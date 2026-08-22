@@ -94,6 +94,22 @@ Open `https://localhost:5173/send/` on the sending device and the printed
 `Network` URL on the receiving phone (accept the self-signed certificate
 once). Walkthrough: [quick start](docs/user/quick-start.md).
 
+### Sending without Node
+
+[`python-sender/`](python-sender/README.md) is a second sender for the same
+protocol, in Python, in a native window:
+
+```bash
+cd python-sender
+uv sync
+uv run decimen-send            # or: uv run decimen-send report.pdf --fps 24
+```
+
+A phone on decimen.app cannot tell the two senders apart — same fountain
+carousel, same frame header, same container, same SHA-256, held to
+[golden vectors](docs/technical/golden-vectors.md) and to a round trip through
+the TypeScript decoder itself. It sends only; the receiver stays here.
+
 ## Similar projects
 
 The concept here was arrived at independently. It turns out several people

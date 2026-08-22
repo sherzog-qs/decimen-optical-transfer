@@ -18,12 +18,14 @@ receiver's progress, so nobody ever has to wonder whether the two behave alike.
 
 from __future__ import annotations
 
+import argparse
 import mimetypes
 import os
 import pathlib
 import platform
 import random
 import subprocess
+import sys
 import time
 
 import pygame
@@ -506,6 +508,52 @@ def _bytes(n: int) -> str:
     return f"{n} B"
 
 
-def main() -> int:
-    SenderApp().run()
+def _parse(argv) -> argparse.Namespace:
+    """Arguments are a shortcut into the window, never a second headless mode.
+
+    Every choice is restricted to what the panel also offers, so nothing
+    reachable from the command line is unreachable from the window — and a typo
+    is refused before a window opens rather than after.
+    """
+    parser = argparse.ArgumentParser(
+        prog="decimen-send",
+        description="Send a file or a text snippet over light, as animated QR "
+                    "codes. Point a phone at decimen.app/receive.",
+    )
+    parser.add_argument("file", nargs="?", type=pathlib.Path,
+                        help="load this file at startup; otherwise pick one in "
+                             "the window or drop it on the QR area")
+    parser.add_argument("--fps", type=int, choices=cfg.TX_FPS_OPTIONS,
+                        default=cfg.DEFAULT_TX_FPS, metavar="N",
+                        help=f"frames per second {cfg.TX_FPS_OPTIONS}")
+    parser.add_argument("--bytes", type=int, choices=cfg.FRAME_BYTES_OPTIONS,
+                        dest="frame_bytes", default=cfg.DEFAULT_FRAME_BYTES,
+                        metavar="N", help=f"payload per frame {cfg.FRAME_BYTES_OPTIONS}")
+    parser.add_argument("--ecc", choices=cfg.ECC_OPTIONS, default=cfg.DEFAULT_ECC,
+                        help="error correction level")
+    parser.add_argument("--codes", type=int,
+                        choices=[n for _, n in cfg.GRID_OPTIONS],
+                        default=cfg.DEFAULT_GRID, metavar="N",
+                        help="codes on screen at once")
+    parser.add_argument("--size", type=int, default=cfg.DEFAULT_DISPLAY_SIZE,
+                        metavar="PX",
+                        help=f"display size, {cfg.DISPLAY_SIZE_MIN}-"
+                             f"{cfg.DISPLAY_SIZE_MAX} px")
+    return parser.parse_args(argv)
+
+
+def main(argv=None) -> int:
+    args = _parse(argv)
+    if args.file is not None and not args.file.is_file():
+        print(f"decimen-send: not a file: {args.file}", file=sys.stderr)
+        return 2
+    size = min(cfg.DISPLAY_SIZE_MAX, max(cfg.DISPLAY_SIZE_MIN, args.size))
+    size = round(size / cfg.DISPLAY_SIZE_STEP) * cfg.DISPLAY_SIZE_STEP
+
+    app = SenderApp()
+    app.settings.update(fps=args.fps, bytes=args.frame_bytes, ecc=args.ecc,
+                        codes=args.codes, size=size)
+    if args.file is not None:
+        app._load(args.file)          # also starts the stream
+    app.run()
     return 0

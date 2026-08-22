@@ -97,6 +97,8 @@ gemacht.
 
 - [Das Sender-Fenster bauen](issues/07-sender-fenster.md) — **ein pygame-Fenster**, 320 px Seitenleiste mit handgezeichneten Bedienelementen, QR-Bereich rechts. Die tkinter-Bedienung aus der Toolkit-Entscheidung reagierte auf keinen Klick (SDL und Tk streiten auf macOS um die NSApplication), daher alles auf pygame. Drag & Drop, Prozess-Pool, Schlafsperre, Kapazitätsfehler — abgenommen an einem echten Handy.
 
+- [Verpackung: uv, Startbefehl, CLI, README](issues/08-verpackung.md) — **kopieren, `uv sync`, `uv run decimen-send`**, geprüft in einem leeren Verzeichnis mit `node`/`npm` auf `/usr/bin/false`: 220 KB, 21 Dateien, 425 Konformitätsprüfungen bestanden, Anwendung gestartet. CLI-Argumente nur mit Werten, die auch die Bedienleiste anbietet, abgewiesen bevor ein Fenster aufgeht. Laufzeitabhängigkeiten auf zwei geschrumpft. README im Ordner, Verweise aus Haupt-README und `architecture.md`.
+
 ## Not yet specified
 
 - **Verhalten bei sehr großen Dateien** — bei K nahe `MAX_SOURCE_BLOCKS`

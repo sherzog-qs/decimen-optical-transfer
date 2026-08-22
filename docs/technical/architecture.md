@@ -62,3 +62,22 @@ artifacts self-identify (banner + `version()`/`build()` exports); licensing
 in `NOTICE.md` alongside them.
 
 Typechecking: `tsconfig.json` covers the pages and `shared/`; `tsconfig.node.json` covers `build/` and `vite.config.ts` (both run in `npm run build`).
+
+## Second sender (`python-sender/`)
+
+A sender for the same wire format in Python, so the sending half works on a
+machine with no Node on it. One pygame window: a hand-drawn control panel
+beside the QR stream, frames produced by a twelve-worker process pool because
+encoding is 92% of the per-frame cost.
+
+It ports the **sending** half of `shared/` — `protocol.ts`, `fountain.ts`,
+`frame-capacity.ts`, `snippet.ts` — plus `send/qr-frame.ts` (segno, same pinned
+mask and version locking) and `shared/qr-raster.ts`. No decoder, and
+deliberately not `dlog`/`solitonCdf`/`frameIndices`: those are the v1
+robust-soliton stream, unemitted since wire v2.
+
+**Two implementations, one wire format.** `python-sender/tests/` holds a
+conformance test against the golden vectors and a round trip through the real
+TypeScript decoder. Neither runs in CI, by choice — run them by hand after
+touching `fountain.ts`, `protocol.ts` or `frame-capacity.ts`, because a drift
+there raises no exception anywhere; the transfer just never completes.

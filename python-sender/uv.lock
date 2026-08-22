@@ -5,9 +5,8 @@ requires-python = ">=3.11"
 [[package]]
 name = "decimen-sender"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
-    { name = "pillow" },
     { name = "pygame-ce" },
     { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
     { name = "segno" },
@@ -15,19 +14,22 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "pillow" },
     { name = "zxing-cpp" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "pillow", specifier = ">=10" },
     { name = "pygame-ce", specifier = ">=2.5" },
     { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'", specifier = ">=12.2.2" },
     { name = "segno", specifier = ">=1.6" },
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "zxing-cpp", specifier = ">=2.2" }]
+dev = [
+    { name = "pillow", specifier = ">=10" },
+    { name = "zxing-cpp", specifier = ">=2.2" },
+]
 
 [[package]]
 name = "pillow"

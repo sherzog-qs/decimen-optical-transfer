@@ -1,28 +1,41 @@
-# Minimal für den Feldversuch aus Ticket "Protokoll nach Python portieren".
-# Startbefehl, CLI-Einstiegspunkt und README kommen aus Ticket "Verpackung".
-
 [project]
 name = "decimen-sender"
 version = "0.1.0"
-description = "Decimen optical transfer — sender, in Python"
+description = "Decimen optical transfer — the sender, in Python"
+readme = "README.md"
+license = "AGPL-3.0-or-later"
 requires-python = ">=3.11"
 dependencies = [
-    "segno>=1.6",       # QR, mit pinnbarer Maske und verriegelbarer Version
-    "pygame-ce>=2.5",   # Stream-Fenster
-    "pillow>=10",       # Rasterhilfe
+    "segno>=1.6",       # QR with a pinnable mask and a lockable version
+    "pygame-ce>=2.5",   # the window, and the hand-drawn controls in it
+    # macOS takes the Cmd-Tab and Dock icon from the application rather than
+    # the window, so the icon needs a second route. Its absence costs the Dock
+    # icon and nothing else.
     "pyobjc-framework-cocoa>=12.2.2 ; sys_platform == 'darwin'",
 ]
 
+[project.scripts]
+decimen-send = "decimen.app:main"
+
 [dependency-groups]
+# Only the conformance test wants these: zxing-cpp decodes the codes it just
+# generated, Pillow gets them into a shape it accepts. The sender itself needs
+# neither.
 dev = [
-    "zxing-cpp>=2.2",   # nur für die Dekodierprobe im Konformitätstest
+    "zxing-cpp>=2.2",
+    "pillow>=10",
 ]
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["decimen"]
+
 [tool.uv]
-# Kein Build: decimen wird importiert, nicht installiert.
-package = false
-# Nicht verhandelbar. Homebrews python@3.13 bringt kein tkinter mit (eigenes
-# Formel-Paket), das von uv verwaltete schon, mit Tk 9.0. Ohne diese Zeile
-# greift uv auf einer Entwicklermaschine das Homebrew-Python ab und das
-# Bedienfenster startet nicht. Gemessen in Ticket "Fenster-Toolkit".
+# Pin the interpreter rather than taking whatever is on PATH. uv's own builds
+# are the same everywhere; a system or Homebrew Python is not — the earlier
+# tkinter panel died on exactly that, and reproducibility is worth the pin even
+# now that no tkinter is involved.
 python-preference = "only-managed"
