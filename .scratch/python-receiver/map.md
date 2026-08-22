@@ -79,13 +79,14 @@ TS-Version), und der Konformitätstest muss **beide** Python-Kopien prüfen.
 
 - [Bildschirmbereich abgreifen: welche Technik, wie schnell?](issues/01-aufnahme-technik.md) — **Quartz `CGWindowListCreateImage`, physische Pixel**, hinter der Schnittstelle `ScreenRegion` (Punkte → RGB-numpy). 123 fps, weit über Bedarf; mss raus (nur logische Punkte), ScreenCaptureKit als Upgrade-Pfad. Ende-zu-Ende belegt: grab + Konversion + zxing hält **62/s** und die Bytes stimmen mit der Quelle überein.
 
+- [Wie viel Citrix-Kompression überlebt ein QR-Code?](issues/02-citrix-robustheit.md) — **Modul-Pixelgröße entscheidet**: ≥6 px/Modul robust, ≤3 px bricht. `px/Modul = Aufnahmebreite / (Grid-Spalten × Modulzahl)`. Stärkster Hebel: weniger Bytes/Frame (niedrigere Version, fettere Module). **Grids kehren die Sender-Logik um** — dort Durchsatz, hier Robustheitsrisiko. H.264≠HDX, also Monotonie verlässlich, Absolutwerte über echtes Citrix zu bestätigen.
+
+- [Decode-Architektur: Aufnahme, Dedup, Grid, Fountain zusammenfügen](issues/03-decode-architektur.md) — **ein Hintergrund-Thread greift ab und dekodiert, pygame-Schleife zeigt nur an, kein Prozess-Pool**: gemessen 129 Decodes/s einthreadig im schlimmsten Fall, über jeder realen Citrix-Rate. Dedup über `seq`; Grids immer „alle Codes suchen"; Bildhash-Vorfilter als Option (Standard aus, nur pixelgenau nützlich); Stream-Neustart über die Stream-Identität vor `addFrame`.
+
+- [Bereichsauswahl: aufziehen wie Cmd-Shift-4](issues/04-bereichsauswahl.md) — **Aufziehen auf einem eingefrorenen Vollbild-Standbild, reines pygame**, Bereich in Punkten (pygame und Bildschirm 1:1, keine Umrechnung), verifiziert bis zur Dekodierung. Während des Empfangs neu aufziehbar ohne Neustart (Decoder hängt an der Stream-Identität, nicht am Bereich). UX-Lehre: grob rahmen ist robust, pixelgenau schneidet die Ruhezone an.
+
 ## Not yet specified
 
-- **Umgang mit dem Stream-Neustart des Senders.** Jede Reglerdrehung am
-  Sender würfelt eine neue `sessionId` und setzt `seq` auf 0 — der Empfänger
-  muss das an der Stream-Identität erkennen und den Decoder zurücksetzen,
-  sonst mischt er zwei Ströme. Wird scharf, sobald die Decode-Architektur
-  (Ticket 03) steht.
 - **Verhalten bei sehr großen Dateien.** Der `LTDecoder` hält alle gelösten
   Blöcke im Speicher; bei 64 MB dieselbe Frage wie beim Sender. Beurteilbar
   erst am laufenden Empfänger.

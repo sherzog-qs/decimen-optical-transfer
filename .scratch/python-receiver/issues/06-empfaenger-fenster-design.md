@@ -15,11 +15,13 @@ Der Umfang steht (Charting Q5, Q7-neu, Q10), die Gestalt nicht:
   Stream-Parameter (K, blockLen, Grid-Anzahl, Dateiname sobald der Container
   ihn hergibt). Der Fortschritt ist die einzige Rückmeldung, ob es läuft —
   gegen Citrix blind, deshalb zentral.
-- **Empfehlung.** Der Empfänger sieht als Einziger die Fangrate. Bei
-  schlechtem Empfang schlägt er konkrete **Sender-Einstellungen** vor — „nur
-  12 %, sag dem Sender 1000 Bytes und 15 fps" — gestützt auf die Zahlen aus
-  „Citrix-Robustheit". Nie Citrix-Einstellungen (darauf hat der Nutzer kaum
-  Einfluss).
+- **Empfehlung.** Der Empfänger sieht als Einziger die Fangrate und die
+  Modulgröße. „Citrix-Robustheit" hat die Grundlage geliefert: Robustheit hängt
+  an **px/Modul = Aufnahmebreite / (Grid-Spalten × Modulzahl)**, Ziel ≥6.
+  Daraus konkrete **Sender-Empfehlungen** in der Reihenfolge weniger Bytes/Frame
+  → weniger Grid-Codes → höhere ECC — nie Citrix-Einstellungen (darauf hat der
+  Nutzer kaum Einfluss). Zu entscheiden: wie viel davon automatisch aus der
+  gemessenen Modulgröße abgeleitet wird und wie es formuliert ist.
 - **Am Ende:** Datei über einen Speicherdialog ablegen (Charting Q10:
   gefragt, wohin), Textschnipsel im Fenster anzeigen zum Kopieren. SHA-256
   wird vor dem Anbieten verifiziert.
