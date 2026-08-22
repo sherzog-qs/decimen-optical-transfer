@@ -95,6 +95,8 @@ TS-Version), und der Konformitätstest muss **beide** Python-Kopien prüfen.
 
 - [Aufnahme-Backends für Windows und Linux](issues/11-aufnahme-backends.md) — **Windows `dxcam`, X11 `mss`, Wayland Portal+PipeWire**. `ScreenRegion` bleibt auf Windows und X11 unverändert (beide Pull plus Rechteck); Wayland erfüllt `grab()` nur, indem es das neueste Strombild hält und ausschneidet — und fasst die **Bereichsauswahl** an, nicht die Aufnahme. Gebaut wird nichts, bis jemand die Plattform braucht.
 
+- [Den Empfänger bauen](issues/07-empfaenger-bauen.md) — **abgenommen, beide Hälften**: lokal pixelgenau und durch eine echte Citrix-Sitzung, SHA-256-verifiziert. Der Citrix-Lauf lief mit den GUI-Standardwerten, also **4 px/Modul** — mitten in der Lücke, die „Citrix-Robustheit" zwischen „≥6 robust" und „≤3 bricht" offen gelassen hatte. Der Feldversuch war zugleich die letzte Fehlerquelle: Speicherdialog-Schleife, fehlender Durchsatz, und die Zwei-Ströme-Regel kamen erst hier heraus.
+
 ## Not yet specified
 
 Die drei Nebelflecken von der Kartierung sind aufgelöst — der laufende
@@ -102,11 +104,12 @@ Empfänger und die portierte Decode-Hälfte haben sie scharf genug gemacht, um
 Tickets zu sein (mehrdeutige Bereiche, große Dateien, Aufnahme-Backends).
 
 - **Kalibrierung der Schwellen an echtem HDX.** Die Empfehlung hängt an
-  px/Modul ≥ 6 (Rettung) bzw. ≥ 8 (Aufwärtsrat). Beide stammen aus einer
-  H.264-Simulation, die „Citrix-Robustheit" selbst als über echtes HDX zu
-  bestätigen markiert hat. Ob nachjustiert werden muss und wie, ist erst
-  spezifizierbar, wenn der Citrix-Lauf aus „Den Empfänger bauen" Zahlen
-  geliefert hat.
+  px/Modul ≥ 6 (Rettung) bzw. ≥ 8 (Aufwärtsrat), beide aus einer
+  H.264-Simulation. Der Citrix-Lauf hat **einen** Punkt geliefert: 4 px/Modul
+  gingen durch. Ein gelungener Lauf verengt, kalibriert aber nicht — dazu
+  braucht es einen, der **scheitert**, denn erst der zeigt die Kante. Bis dahin
+  bleiben die Schwellen, wie sie sind, und die Frage zu unscharf für ein
+  Ticket.
 
 ## Out of scope
 

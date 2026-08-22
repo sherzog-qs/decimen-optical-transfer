@@ -1,7 +1,7 @@
 # Den Empfänger bauen
 
 Type: task
-Status: claimed
+Status: resolved
 Blocked by: 03, 04, 05, 06
 
 ## Question
@@ -184,50 +184,40 @@ tragen, samt Faktor und verbleibender px/Modul. Beide Richtungen, eine Zahl.
 Kante, das Schweigen wenn nichts besser ist, und dass bei H nie eine
 Rahmengröße vorgeschlagen wird, die ein Code auf dieser Stufe gar nicht trägt.
 
-### Was noch fehlt — die Citrix-Runde
+### Abgenommen — beide Hälften
 
-Der Nutzer will 07 schließen, bevor die Verpackung beginnt; die Blockade-Kante
-auf 08 bleibt also stehen. Es fehlt genau ein Lauf, und der ist HITL.
+**Runde 1 lokal, pixelgenau** (siehe oben) und **Runde 2 durch eine echte
+Citrix-Sitzung**, beide SHA-256-verifiziert. Damit ist das Abnahmekriterium
+erfüllt und das Ticket geschlossen.
 
-**Startwerte.** Nicht mit dem Default anfangen: `--bytes 2953` ergibt bei 900 px
-nur 5,1 px/Modul, schon lokal unter der Schwelle 6 aus „Citrix-Robustheit".
-Gemessen (Senderfenster als Obergrenze, der Bereich schneidet nur ab):
+Der Citrix-Lauf lief über die **GUI mit den Standardwerten** — also
+`--fps 60 --bytes 2953 --ecc L --codes 1 --size 900`. Die Geometrie dazu, aus
+`send_settings_hint` gerechnet: 2953 B ⇒ QR-Version 40 ⇒ 177 Module, Zelle 185
+mit Ruhezone, ganzzahlige Skala `900 // 185 = 4`. Also **4 px/Modul, bei einem
+tatsächlichen Bild von 740 px** (der Sender lässt 160 px des Fensters
+ungenutzt, weil die Skala ganzzahlig ist).
 
-| `--bytes` | Module | px/Modul @900 | @1200 |
-|---|---|---|---|
-| 2953 (Default) | 177 | 5,1 | 6,8 |
-| 1850 | 145 | 6,2 | 8,3 |
-| 1000 | 105 | 8,6 | 11,4 |
-| 500 | 77 | 11,7 | 15,6 |
+**Das ist der interessanteste Befund des ganzen Tickets.** „Citrix-Robustheit"
+hatte ≥6 px/Modul als robust und ≤3 als gebrochen gemessen — gegen eine
+H.264-Simulation, ausdrücklich mit dem Vorbehalt, dass echtes HDX das
+bestätigen muss. Der reale Lauf landet mit 4 **genau in der ungetesteten Lücke
+dazwischen**, und er ging durch. Kein Widerspruch zur Simulation, aber eine
+echte Verengung: **4 px/Modul reichen über echtes HDX.**
 
-```
-# in der Citrix-Sitzung
-uv run decimen-send <datei> --fps 15 --bytes 1000 --size 1200 --codes 1
-# lokal
-uv run decimen-receive        # Leertaste, Bereich grob um das Senderfenster
-```
+**Nichts nachgezogen.** Eine einzelne gelungene Übertragung ist kein Grund,
+eine Sicherheitsmarge zu senken — was fehlt, ist ein Lauf, der *scheitert*,
+denn erst der sagt, wo die Kante wirklich liegt. `TARGET_PX = 6` und
+`UPGRADE_PX = 8` bleiben, wie sie sind.
 
-`--size 1200` ist das Maximum des Senders, `--fps 15` gibt jedem Frame Zeit,
-in HDX stehenzubleiben. Von hier aus **hoch** arbeiten (mehr Bytes, mehr fps),
-nicht vom Default herunter.
+Bemerkenswert ist dabei, dass die Gestaltung diesen Fall schon richtig
+behandelt hat, ohne es zu wissen: die Rettungszeile hängt an der **Fangrate**,
+nicht an px/Modul, und ist bei einem gesunden Strom mit 4 px/Modul stumm
+geblieben — hätte sie an px/Modul gehangen, hätte sie eine funktionierende
+Übertragung angemahnt.
 
-**Zu beobachten, in dieser Reihenfolge:**
+Ungeprüft geblieben, weil der Lauf ohne Not durchging: Bereich mit Leertaste
+nachziehen und Sender-Neustart, beide über Citrix. Sie stehen im Engine-Test
+und im lokalen Lauf, nicht am echten Bild.
 
-1. **px/Modul** im Panel. Das ist die eine Zahl, an der Erfolg oder Misserfolg
-   hängt — unter 6 wird es brüchig, egal was der Rest sagt.
-2. **throughput / time left** — laufen sie, kommt der Strom an.
-3. **Empfehlungszeile**: erscheint sie bei schlechtem Empfang nach 4 s, und
-   rät sie das Richtige (weniger Bytes, dann weniger Codes)?
-4. **Bereich mit Leertaste nachziehen**, während der Empfang läuft — der
-   Decoder muss weiterlaufen. Über Citrix der wahrscheinlichste Handgriff.
-5. **Sender neu starten**, während der Empfänger läuft: Stream-Neustart muss
-   greifen (im Test belegt, am echten Bild nicht).
-6. **Abbrechen im Speicherdialog, dann S** — der Fix aus Runde 1 am echten
-   Dialog.
-
-**Erledigt, wenn** die Datei durch Citrix SHA-256-verifiziert herausfällt.
-Dann schließt 07 und die Verpackung wird frei.
-
-Startbefehl ist `uv run decimen-receive` (das Skript steht in `pyproject.toml`);
-README und Repo-Verweise kommen aus der Verpackung. Der Ordner
-`python-receiver/` ist noch **nicht eingecheckt**.
+Startbefehl ist `uv run decimen-receive`; README und Repo-Verweise kommen aus
+der Verpackung, die damit frei wird.
