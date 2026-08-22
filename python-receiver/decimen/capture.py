@@ -12,6 +12,14 @@ produces, so the deprecated-but-simple path wins today.
 
 mss was rejected: it returns logical points, halving every module's pixels.
 
+Other platforms, decided but not built (see the backends ticket): Windows is
+dxcam over Desktop Duplication, which is pull-based and rectangle-shaped like
+this class — grab(new_frame_only=False), BGRA, and the same channel slice
+below. X11 is mss, which has no HiDPI virtualisation to lose there. Wayland is
+the odd one: xdg-desktop-portal hands out a PipeWire stream of a source the
+user picks in a system dialog, so a backend has to hold the newest frame and
+crop this rectangle out of it, and region selection gains a step.
+
 Needs Screen Recording permission for the running process, or capture returns
 a black image with no error.
 """

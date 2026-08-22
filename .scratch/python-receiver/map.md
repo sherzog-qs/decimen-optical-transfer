@@ -93,6 +93,8 @@ TS-Version), und der Konformitätstest muss **beide** Python-Kopien prüfen.
 
 - [Verhalten bei sehr großen Dateien](issues/10-grosse-dateien.md) — **64 MB gehen, ohne Sonderbehandlung**. Linear 4,1× die Dateigröße (260 MB bei 64 MB), kein Knick; die u16-Blockgrenze bindet nie, weil der Sender vorher prüft; der schlimmste einzelne Peel-Frame kostet 103 ms, stiehlt dem gemeinsamen Thread also nichts Nennenswertes. Keine Grenze, kein Wächter — nur `size` in der Seitenleiste, damit man sieht, worauf man wartet.
 
+- [Aufnahme-Backends für Windows und Linux](issues/11-aufnahme-backends.md) — **Windows `dxcam`, X11 `mss`, Wayland Portal+PipeWire**. `ScreenRegion` bleibt auf Windows und X11 unverändert (beide Pull plus Rechteck); Wayland erfüllt `grab()` nur, indem es das neueste Strombild hält und ausschneidet — und fasst die **Bereichsauswahl** an, nicht die Aufnahme. Gebaut wird nichts, bis jemand die Plattform braucht.
+
 ## Not yet specified
 
 Die drei Nebelflecken von der Kartierung sind aufgelöst — der laufende
