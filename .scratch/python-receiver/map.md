@@ -91,6 +91,8 @@ TS-Version), und der Konformitätstest muss **beide** Python-Kopien prüfen.
 
 - [Mehrdeutige Bereiche: kein Code, oder zwei Ströme gleichzeitig](issues/09-mehrdeutige-bereiche.md) — **ein Inkumbent, Schweigen als einziger Wechselgrund**. Erkennung pro Grab (ein Grid ist *n* Codes unter einer Identität, zwei Sender je einer unter zweien), der erste geparste Frame gewinnt, fremde Frames werden verworfen statt als Reset gedeutet, Wechsel erst nach 2 s Stille — dieselbe Regel trägt den Sender-Neustart. Behob einen stummen Totalausfall: bei zwei sichtbaren Strömen setzte der Decoder in jedem Grab zurück und kam nie an.
 
+- [Verhalten bei sehr großen Dateien](issues/10-grosse-dateien.md) — **64 MB gehen, ohne Sonderbehandlung**. Linear 4,1× die Dateigröße (260 MB bei 64 MB), kein Knick; die u16-Blockgrenze bindet nie, weil der Sender vorher prüft; der schlimmste einzelne Peel-Frame kostet 103 ms, stiehlt dem gemeinsamen Thread also nichts Nennenswertes. Keine Grenze, kein Wächter — nur `size` in der Seitenleiste, damit man sieht, worauf man wartet.
+
 ## Not yet specified
 
 Die drei Nebelflecken von der Kartierung sind aufgelöst — der laufende

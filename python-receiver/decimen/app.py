@@ -38,6 +38,13 @@ LOW_CATCH = 6.0
 LOW_CATCH_SECONDS = 4.0
 
 
+def human_bytes(n: int) -> str:
+    for unit, step in (("MB", 1 << 20), ("KB", 1 << 10)):
+        if n >= step:
+            return f"{n / step:.1f} {unit}"
+    return f"{n} B" if n else "—"
+
+
 def throughput_kb(snap) -> str:
     """Payload actually landing, in kB/s: useful frames per second times the
     block each one carries. It is wire payload — a compressed stream writes a
@@ -179,6 +186,7 @@ class ReceiverApp:
                              pygame.Rect(x, y, int(INNER * min(1.0, frac)), 8),
                              border_radius=4)
             y += 18
+            y = ui.spec(x, y, INNER, "size", human_bytes(snap.total_len))
             y = ui.spec(x, y, INNER, "frames", f"{snap.frames_collected} / ~{snap.frames_needed}")
             y = ui.spec(x, y, INNER, "catch rate", f"{snap.catch_rate:.0f}/s")
             y = ui.spec(x, y, INNER, "throughput", throughput_kb(snap))
@@ -286,7 +294,7 @@ class ReceiverApp:
 
 
 class _Empty:
-    frames_collected = frames_needed = k = block_len = grid_codes = 0
+    frames_collected = frames_needed = k = block_len = total_len = grid_codes = 0
     px_per_module = catch_rate = 0.0
     compression = "—"
     ecc = "L"

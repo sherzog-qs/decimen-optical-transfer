@@ -64,7 +64,9 @@ def test_panel_numbers():
     assert a.throughput_kb(s) == "0.0 kB/s", a.throughput_kb(s)
     s.complete = True
     assert a.time_left(s) == "done", a.time_left(s)
-    print("  throughput and time left, including the zero-rate case")
+    assert a.human_bytes(0) == "—" and a.human_bytes(900) == "900 B", "small sizes"
+    assert a.human_bytes(64 << 20) == "64.0 MB", a.human_bytes(64 << 20)
+    print("  throughput, time left and size, including the zero-rate case")
 
 
 def test_headroom():
@@ -106,4 +108,4 @@ if __name__ == "__main__":
     test_cancel_offers_once()
     test_panel_numbers()
     test_headroom()
-    print("\n19 checks passed")
+    print("\n21 checks passed")

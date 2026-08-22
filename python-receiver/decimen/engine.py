@@ -40,6 +40,7 @@ class Snapshot:
     frames_needed: int = 0          # ~k * 1.15, the completion target
     k: int = 0
     block_len: int = 0
+    total_len: int = 0               # container size, known from the first frame
     grid_codes: int = 0              # codes of the incumbent stream, not of the grab
     px_per_module: float = 0.0
     catch_rate: float = 0.0         # useful new frames per second
@@ -165,6 +166,7 @@ class ReceiverEngine:
                 self._snap.frames_needed = max(1, round(d.k * 1.15))
                 self._snap.k = d.k
                 self._snap.block_len = d.block_len
+                self._snap.total_len = d.total_len
                 self._snap.catch_rate = float(len(self._catch_window))
                 self._snap.grid_codes = codes_seen or self._snap.grid_codes
                 if px_per_module:
