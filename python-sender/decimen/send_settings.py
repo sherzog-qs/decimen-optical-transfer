@@ -29,6 +29,20 @@ FRAME_BYTES_OPTIONS = [500, 1000, NO_SIGNAL_HINT_FRAME_BYTES, 1850, 2331, DEFAUL
 ECC_OPTIONS = ["L", "M", "Q", "H"]
 DEFAULT_ECC = "L"
 
+# The largest payload a version-40 byte-mode QR holds at each level — fixed by
+# the QR spec, and measured against segno rather than quoted from memory. It is
+# why frame size and error correction are not independent: 2953 bytes only fit
+# at L, and asking for more than a code can carry is not an error the fountain
+# can absorb. The web sender catches the generator throwing (send/main.ts:708);
+# this side keeps the pairing visible instead.
+MAX_FRAME_BYTES_BY_ECC = {"L": 2953, "M": 2331, "Q": 1663, "H": 1273}
+
+
+def frame_bytes_for(ecc: str) -> list[int]:
+    """The offered frame sizes that actually fit at this level."""
+    cap = MAX_FRAME_BYTES_BY_ECC[ecc]
+    return [value for value in FRAME_BYTES_OPTIONS if value <= cap]
+
 # Counts that fill their rectangle — see grid_dims(). The sender offers these
 # four; the rasteriser accepts any count that tiles.
 GRID_OPTIONS = [("1 code", 1), ("2 codes (1x2)", 2), ("4 codes (2x2)", 4), ("6 codes (2x3)", 6)]

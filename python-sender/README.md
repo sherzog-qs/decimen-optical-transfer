@@ -36,6 +36,12 @@ uv run decimen-send --bytes 1465 --codes 4     # …preset, waiting for a drop
 offers, so nothing reachable from the command line is unreachable from the
 window.
 
+**Frame size and error correction are not independent.** A single QR code holds
+2953 bytes at L, 2331 at M, 1663 at Q and 1273 at H — so 2953 bytes / frame
+only exists at L. The panel greys out the sizes that cannot work at the current
+level, and raising the level drops the frame size to the largest that fits,
+saying so in the status line.
+
 ## What it is and is not
 
 **Sends** files and text snippets. Five settings — frame rate, bytes per frame,

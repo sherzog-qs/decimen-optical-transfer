@@ -167,3 +167,41 @@ antialiasierte Glyphen. Der Anzeigeweg war das Problem, nicht der Code.
 Der Rauchtest prüft deshalb jetzt die **Klickpfade** mit synthetischen
 Mausereignissen, und die Anordnung wird **vermessen** statt angesehen — so kam
 die Überlappung zwischen Statusfeld und Fußhinweis heraus.
+
+## Nachtrag — ECC hochdrehen stürzte ab
+
+Nach der Abnahme gemeldet: ein Klick auf M, Q oder H bei der vorgegebenen
+Frame-Größe beendete den Sender mit segnos `DataOverflowError`.
+
+Ursache: **Frame-Größe und Fehlerkorrektur sind nicht unabhängig.** Ein
+QR-Code fasst 2953 Bytes bei L, 2331 bei M, 1663 bei Q und 1273 bei H —
+gemessen, nicht zitiert. Die Vorgabe 2953 existiert also nur bei L, und jede
+höhere Stufe verlangt nach einem Code, den es nicht gibt.
+
+Das war vermeidbar. Mein Referenz-Sweep in „QR-Encoder in Python" hatte
+`try { … } catch { continue }` und übersprang unmögliche Kombinationen
+stillschweigend — deshalb standen im Fingerabdruck-Tisch nur 20 statt 24
+Fälle. Die Information lag vor, ich habe sie nie in die Anwendung getragen.
+
+Der Web-Sender fängt genau das ab (`send/main.ts:708`, Kommentar: „e.g. frame
+bytes over capacity for the chosen ECC level"), setzt `generatorFailed` und
+zeigt den Fehler. Mein Port hatte den Fang nicht.
+
+Behoben auf drei Ebenen:
+
+1. **Sichtbar:** die Frame-Größen, die bei der aktuellen Stufe nicht gehen,
+   werden blass gezeichnet und schlucken ihre Klicks. Die Kopplung steht auf
+   dem Schirm, bevor jemand hineinläuft.
+2. **Selbstkorrigierend:** wer die Stufe hochdreht, dessen Frame-Größe fällt
+   auf die größte passende — mit einer Zeile in der Statusanzeige, nicht
+   stumm. Das ist der eine Weg, der die Sperre sonst umgehen könnte, und über
+   `--bytes` plus `--ecc` gilt dasselbe.
+3. **Fangnetz:** `restart()` prüft die Grenze vorher und kapselt den Aufbau
+   der `FrameSource` zusätzlich in `try/except`, wie der Web-Sender es tut.
+
+Regressionstest in `smoke_window.py`: L mit 2953 auf H klicken, klemmen auf
+1000, Strom läuft weiter, gesperrter Chip schaltet nicht — und alle vier
+Stufen erzeugen tatsächlich Frames.
+
+**Die Lehre:** ein Prüfstand, der unmögliche Fälle wegwirft statt sie zu
+melden, verschweigt genau das, was die Anwendung wissen muss.

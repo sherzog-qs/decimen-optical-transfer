@@ -116,19 +116,26 @@ class SenderApp:
         y = ui.wrapped(x, y, INNER, self.payload_label, theme.MUTED) + 20
 
         y = ui.section(x, y, "Transfer")
-        for key, label, values, labels, suffix in (
-            ("fps", "tx fps", cfg.TX_FPS_OPTIONS, None, ""),
-            ("bytes", "bytes / frame", cfg.FRAME_BYTES_OPTIONS, None, ""),
-            ("ecc", "error correction", cfg.ECC_OPTIONS, None, ""),
+        # Frame size and error correction are not independent: 2953 bytes only
+        # fit in a code at L. The sizes that cannot work are drawn faint and
+        # refuse their clicks, so the pairing is visible before it is hit.
+        too_big = [v for v in cfg.FRAME_BYTES_OPTIONS
+                   if v > cfg.MAX_FRAME_BYTES_BY_ECC[self.settings["ecc"]]]
+        for key, label, values, labels, suffix, off in (
+            ("fps", "tx fps", cfg.TX_FPS_OPTIONS, None, "", ()),
+            ("bytes", "bytes / frame", cfg.FRAME_BYTES_OPTIONS, None, "", too_big),
+            ("ecc", "error correction", cfg.ECC_OPTIONS, None, "", ()),
             ("codes", "layout", [n for _, n in cfg.GRID_OPTIONS],
-             [str(n) for _, n in cfg.GRID_OPTIONS], " codes"),
+             [str(n) for _, n in cfg.GRID_OPTIONS], " codes", ()),
         ):
             y = self._control_label(x, y, label, f"{self.settings[key]}{suffix}")
             picked, y = ui.chips(x, y, INNER, values, self.settings[key], labels,
-                                 key=key)
+                                 key=key, disabled=off)
             y += 12
             if picked != self.settings[key]:
                 self.settings[key] = picked
+                if key == "ecc":
+                    self._fit_frame_bytes()
                 self.restart()
 
         y = self._control_label(x, y, "display size", f"{self.settings['size']} px")
@@ -258,14 +265,31 @@ class SenderApp:
                 f"{MAX_SOURCE_BLOCKS:,}. Try {suggestion}.", error=True)
             return
 
+        if frame_bytes > cfg.MAX_FRAME_BYTES_BY_ECC[ecc]:
+            # Unreachable through the panel, which greys these out — but not
+            # through --bytes and --ecc on the command line.
+            self._set_status(
+                f"{frame_bytes} bytes / frame does not fit in a code at ECC "
+                f"{ecc}; the ceiling is {cfg.MAX_FRAME_BYTES_BY_ECC[ecc]}. "
+                f"Try {cfg.frame_bytes_for(ecc)[-1]}.", error=True)
+            return
+
         session_id = random.randint(1, 0xFFFF)      # random per sender start
         encoder = LTEncoder(container, block_len, session_id)
         header = p.FrameHeader(
             session_id=session_id, seq=0, k=encoder.k, block_len=block_len,
             total_len=len(container), payload_fnv=p.fnv1a(container), flags=0,
         )
-        self.source = FrameSource(container, block_len, session_id, header, ecc,
-                                  codes, self.settings["size"])
+        try:
+            self.source = FrameSource(container, block_len, session_id, header,
+                                      ecc, codes, self.settings["size"])
+        except Exception as exc:
+            # The web sender catches the generator throwing too (send/main.ts:708).
+            # The guard above covers the known case; this covers the rest rather
+            # than taking the window down with a traceback.
+            self.source = None
+            self._set_status(f"Could not start the stream: {exc}", error=True)
+            return
         self.codes = codes
         self.target_fps = self.settings["fps"]
         self.shown = 0
@@ -283,6 +307,19 @@ class SenderApp:
             k=f"{encoder.k:,}",
         )
         self._set_status("Streaming. Changing any setting restarts the stream.")
+
+    def _fit_frame_bytes(self) -> None:
+        """Raising error correction can strand the frame size above what a code
+        holds. Drop it to the largest that fits and say so, rather than leaving
+        a combination that cannot produce a single frame."""
+        allowed = cfg.frame_bytes_for(self.settings["ecc"])
+        if self.settings["bytes"] in allowed:
+            return
+        self.settings["bytes"] = allowed[-1]
+        self._set_status(
+            f"ECC {self.settings['ecc']} caps a code at "
+            f"{cfg.MAX_FRAME_BYTES_BY_ECC[self.settings['ecc']]} bytes, so "
+            f"bytes / frame dropped to {allowed[-1]}.")
 
     def _keep_awake(self) -> None:
         """A 40 MB transfer at 20 fps runs for minutes; the screensaver would
@@ -553,6 +590,7 @@ def main(argv=None) -> int:
     app = SenderApp()
     app.settings.update(fps=args.fps, bytes=args.frame_bytes, ecc=args.ecc,
                         codes=args.codes, size=size)
+    app._fit_frame_bytes()            # --bytes and --ecc can disagree
     if args.file is not None:
         app._load(args.file)          # also starts the stream
     app.run()

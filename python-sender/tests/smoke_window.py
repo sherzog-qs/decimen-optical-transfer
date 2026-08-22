@@ -68,7 +68,9 @@ def drive(pygame, p, app) -> int:
           f"ECC -> {app.settings['ecc']} (ohne Nutzlast kein Neustart)")
     assert app.source is None, "ohne Nutzlast darf kein Strom laufen"
 
-    app.settings.update(fps=60, ecc="L")
+    # bytes zuruecksetzen, nicht nur ecc: der Klick auf M hat die Frame-Groesse
+    # geklemmt, und die folgenden Messwerte sollen die Vorgabe zeigen.
+    app.settings.update(fps=60, ecc="L", bytes=2953)
     app.packed = p.pack_snippet("smoke test payload for the sender window")
     app.payload_label = "snippet.txt"
     t0 = time.perf_counter()
@@ -103,9 +105,44 @@ def drive(pygame, p, app) -> int:
     assert app.source is None and app.status_error, app.status
     print(f"  Kapazitaet      abgefangen: {app.status[:58]}...")
 
+    check_ecc_capacity(pygame, p, app)
     check_cli()
     print("\nSender-Fenster: gezeichnet, geklickt, gestreamt, umgestellt, beendet.")
     return 0
+
+
+def check_ecc_capacity(pygame, p, app) -> None:
+    """ECC hochdrehen darf die Frame-Groesse nicht stranden lassen.
+
+    2953 Bytes passen nur bei ECC L in einen Code. Vor dieser Pruefung stuerzte
+    ein Klick auf M, Q oder H den Sender mit segnos DataOverflowError ab.
+    """
+    from decimen import send_settings as cfg
+
+    app.packed = p.pack_snippet("capacity check")
+    app.payload_label = "snippet.txt"
+    app.settings.update(bytes=2953, ecc="L", codes=1, size=600)
+    app.restart()
+    assert app.source is not None, app.status
+
+    click(pygame, app, "ecc:H")
+    assert app.settings["ecc"] == "H", app.settings
+    assert app.settings["bytes"] == 1000, app.settings
+    assert app.source is not None, f"Strom gestorben: {app.status}"
+    print(f"  ECC-Grenze      L/2953 -> H klemmt auf "
+          f"{app.settings['bytes']} B, Strom laeuft weiter")
+
+    click(pygame, app, "bytes:2953")          # gesperrter Chip
+    assert app.settings["bytes"] == 1000, "gesperrter Chip hat doch geschaltet"
+
+    for ecc in cfg.ECC_OPTIONS:               # jede Stufe muss senden koennen
+        app.settings["ecc"] = ecc
+        app._fit_frame_bytes()
+        app.restart()
+        assert app.source is not None, f"ECC {ecc} startet nicht: {app.status}"
+        app._next_frame()
+        assert app.frame_rgb is not None
+    print("  Alle vier Stufen L M Q H erzeugen Frames")
 
 
 def check_cli() -> None:

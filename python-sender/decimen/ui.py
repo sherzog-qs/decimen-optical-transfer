@@ -141,8 +141,12 @@ class UI:
         return self.click is not None and rect.collidepoint(self.click)
 
     def chips(self, x: int, y: int, width: int, values, current, labels=None,
-              key: str | None = None, height: int = 26):
-        """A row of selectable values. Returns the value after any click."""
+              key: str | None = None, height: int = 26, disabled=()):
+        """A row of selectable values. Returns the value after any click.
+
+        `disabled` values are drawn faint and swallow their clicks — the
+        constraint is visible before it is hit, rather than reported after.
+        """
         labels = labels or [str(v) for v in values]
         gap = 5
         chip_w = (width - gap * (len(values) - 1)) // len(values)
@@ -151,16 +155,18 @@ class UI:
             rect = pygame.Rect(x + i * (chip_w + gap), y, chip_w, height)
             if key is not None:
                 self.rects[f"{key}:{value}"] = rect
-            selected = value == current
-            held = self.press is not None and rect.collidepoint(self.press)
+            off = value in disabled
+            selected = value == current and not off
+            held = not off and self.press is not None and rect.collidepoint(self.press)
             fill = ACCENT if selected else (SURFACE_HI if held else SURFACE)
             pygame.draw.rect(self.surface, fill, rect, border_radius=7)
             if not selected:
                 pygame.draw.rect(self.surface, LINE, rect, width=1, border_radius=7)
             font = self.mono_small if labels[i].isdigit() else self.small
-            text = font.render(labels[i], True, ACCENT_INK if selected else INK)
+            ink = FAINT if off else (ACCENT_INK if selected else INK)
+            text = font.render(labels[i], True, ink)
             self.surface.blit(text, text.get_rect(center=rect.center))
-            if self.click is not None and rect.collidepoint(self.click):
+            if not off and self.click is not None and rect.collidepoint(self.click):
                 picked = value
         return picked, y + height
 
