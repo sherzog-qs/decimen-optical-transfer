@@ -103,3 +103,19 @@ Der Inhalt des Bedienfensters ist ein Prototyp, kein Urteil. Reaktionen darauf
 — was fehlt, was stört, was anders gruppiert gehört — fließen in „Das
 Sender-Fenster bauen", wo das richtige Fenster ohnehin entsteht. Dieses Ticket
 beantwortet die Aufteilung und die Darbietung, nicht jeden Beschriftungstext.
+
+## Nachtrag — ein Fenster statt zwei
+
+Die Zwei-Fenster-Bauform hing an der Zweiteilung tkinter/pygame. Mit der
+Umstellung auf reines pygame fällt sie: mehrere SDL-Fenster gehen nur über
+`pygame._sdl2.video`, eine halbprivate API, und das lohnt hier nichts.
+
+**Es ist jetzt ein Fenster:** links eine 300 px breite Seitenleiste mit allen
+Bedienelementen, rechts der QR-Bereich. Die Kamera rahmt ohnehin nur den Code,
+also kostet die Leiste Bildschirmfläche und sonst nichts. Das Fenster wächst
+mit der eingestellten Anzeigegröße; ohne Nutzlast steht im QR-Bereich „Drop a
+file here", damit es überhaupt ein Ablegeziel gibt.
+
+Gültig bleibt: **kein Vollbild, kein randloser Modus, keine Monitor-Auswahl**
+— das Fenster wird gezogen wie jedes andere. Und der „Nichts passiert?"-Hinweis
+bleibt eine feste Zeile ohne Timer, aus dem im Sender-Ticket belegten Grund.

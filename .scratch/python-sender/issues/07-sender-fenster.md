@@ -1,7 +1,7 @@
 # Das Sender-Fenster bauen
 
 Type: task
-Status: claimed
+Status: resolved
 Blocked by: 02, 04, 05, 06, 09
 
 ## Question
@@ -115,3 +115,55 @@ Zu prüfen ist genau das, was kein Test kann:
    neu, der Schieberegler erst beim Loslassen.
 
 Klappt das, ist das Ticket gelöst und nur noch die Verpackung offen.
+
+## Answer — abgenommen
+
+Drag & Drop trägt, die Dateien kommen auf dem Handy an, die Bedienung sitzt.
+
+Der Weg dahin ging über eine Kehrtwende: gebaut war zuerst tkinter für die
+Bedienung neben pygame für den Strom, wie in „Fenster-Toolkit" entschieden. Im
+fertigen Sender reagierte das tkinter-Panel auf **keinen Klick** — auf macOS
+streiten SDL und Tk um die NSApplication, und der Verlierer bekommt keine
+Eingaben mehr. Statt das auszudiagnostizieren wurde auf Wunsch alles auf pygame
+umgestellt; die Bedienelemente sind jetzt von Hand gezeichnet
+(`decimen/ui.py`, Immediate Mode).
+
+Damit fiel auch die Zwei-Fenster-Bauform: mehrere SDL-Fenster brauchen eine
+halbprivate API. Es ist ein Fenster mit 320 px Seitenleiste links und dem
+QR-Bereich rechts. Beide Nachträge stehen in den betroffenen Tickets.
+
+### Was gebaut ist
+
+Datei und Textschnipsel als Eingabe, Datei zusätzlich per Drag & Drop auf den
+QR-Bereich. Fünf Regler aus den Listen in `send_settings.py`, jede Änderung
+startet den Strom neu, der Schieberegler erst beim Loslassen. Spec-Anzeige mit
+erreichter gegen eingestellte Bildrate. Prozess-Pool mit zwölf Arbeitern.
+Schlafsperre über `caffeinate -w <pid>`. Kapazitätsfehler behält die Datei und
+nennt einen Wert, der wirklich in der Auswahlreihe steht.
+
+### Fünf Dinge, die erst der Bau gefunden hat
+
+1. **Der „Nichts passiert?"-Hinweis gehört nicht in den Sender** — er ist
+   Empfänger-Sache, und ein Sender ohne Rückkanal kann nicht wissen, ob etwas
+   ankommt. Auf der Karte nach „Out of scope" verschoben.
+2. **Drag & Drop brauchte ein Ziel.** Das Stream-Fenster entstand erst mit der
+   ersten Nutzlast — es gab nichts, worauf man ziehen konnte.
+3. **`__main__.py` darf die Oberfläche nicht auf Modulebene importieren**, sonst
+   zieht jeder der zwölf Spawn-Arbeiter sie mit.
+4. **`run()` braucht `try/finally`** — sonst überleben Arbeiter und
+   `caffeinate` einen Absturz und der Prozess endet nie.
+5. **`caffeinate -w <pid>` statt `terminate()`**: ein `finally` läuft bei
+   SIGTERM nicht, ein zurückgelassenes `caffeinate` hält die Maschine wach.
+
+### Die Lehre über dieses Ticket hinaus
+
+Zweimal habe ich aus einer Messung mehr geschlossen, als sie hergab. Erst galt
+„beide Toolkits laufen ohne Absturz" als Beleg, dass die Bauform trägt — sie
+belegte nur, dass nichts abstürzt, nicht dass Eingaben ankommen. Später hielt
+ich Text auf gerenderten Ansichten für massive Balken und suchte den Fehler in
+der Schriftverarbeitung; die Messung der gespeicherten Datei zeigte echte
+antialiasierte Glyphen. Der Anzeigeweg war das Problem, nicht der Code.
+
+Der Rauchtest prüft deshalb jetzt die **Klickpfade** mit synthetischen
+Mausereignissen, und die Anordnung wird **vermessen** statt angesehen — so kam
+die Überlappung zwischen Statusfeld und Fußhinweis heraus.

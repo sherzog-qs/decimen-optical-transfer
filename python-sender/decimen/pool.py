@@ -13,8 +13,8 @@ Two decisions in here came from that measurement rather than from taste:
 * **Workers return the finished RGB raster, not the module matrix.** The raster
   is 1.6 MB against the matrix's 3.9 KB, and it is still the right way round:
   rasterising in the main process would cost roughly two thirds of a core at
-  full rate, next to tkinter and pygame. The big pipe is cheaper than the small
-  one here.
+  full rate, alongside the event loop and the blit. The big pipe is cheaper
+  than the small one here.
 
 Each restart builds a fresh pool — 83 ms, measured — because the workers hold
 the container and the stream's settings in their initialiser. Dropping the old

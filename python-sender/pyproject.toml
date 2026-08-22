@@ -10,6 +10,7 @@ dependencies = [
     "segno>=1.6",       # QR, mit pinnbarer Maske und verriegelbarer Version
     "pygame-ce>=2.5",   # Stream-Fenster
     "pillow>=10",       # Rasterhilfe
+    "pyobjc-framework-cocoa>=12.2.2 ; sys_platform == 'darwin'",
 ]
 
 [dependency-groups]

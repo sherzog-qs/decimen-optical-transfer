@@ -128,3 +128,25 @@ Python gewählt ist.
   Toolkit.
 - `.scratch/python-sender/assets/pipeline-bench.py` — die ganze Kette mit
   Zeitanteilen; die Vorlage für jede spätere Durchsatzmessung.
+
+## Nachtrag — die Zweiteilung ist gefallen
+
+Diese Antwort stellte tkinter für die Bedienung neben pygame für den Strom, mit
+dem Beleg „beide laufen im selben Prozess, 402 Durchläufe/s". **Der Beleg war
+zu schwach.** Er zeigte, dass keine der beiden Schleifen abstürzt — nicht, dass
+beide Fenster Eingaben bekommen. Im fertigen Sender kam das tkinter-Panel hoch
+und reagierte auf keinen Klick.
+
+Auf macOS wollen SDL und Tk beide die NSApplication sein; wer dabei verliert,
+sieht keine Ereignisse mehr. Statt das auszudiagnostizieren, ist auf Wunsch
+**alles auf pygame umgestellt**: die Bedienelemente sind von Hand gezeichnet
+(`decimen/ui.py`, Immediate Mode).
+
+Was von der Messung dieses Tickets gültig bleibt: die Bildraten — tkinter 52,6
+fps bei 740 px gegen pygames vsync-gedeckelte 120 — und die Falle mit dem
+tkinter-losen Homebrew-Python. Letztere ist jetzt gegenstandslos, weil kein
+tkinter mehr gebraucht wird; `python-preference = "only-managed"` bleibt
+trotzdem stehen, weil eine reproduzierbare Umgebung ohnehin richtig ist.
+
+**Die Lehre, die über dieses Ticket hinausgeht:** eine Toolkit-Messung, die
+keine Eingabe prüft, hat das Toolkit nicht geprüft.

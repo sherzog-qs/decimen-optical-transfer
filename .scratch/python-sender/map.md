@@ -46,11 +46,25 @@ zweimal. Der Konformitätstest läuft bewusst nur lokal, nicht in CI
 ausführt. Wer `shared/fountain.ts`, `shared/protocol.ts` oder
 `shared/frame-capacity.ts` anfasst, führt ihn aus.
 
-**Angenommene Plattform: macOS.** Nicht erfragt, daher als Annahme
-festgehalten: primär der Mac des Entwicklers, Portabilität wird
-mitgenommen wo sie nichts kostet. Die Schlafsperre (`caffeinate`) ist der
-eine bekannte Bruch. Gilt Windows oder Linux auch, kippt das Ticket 02 und
-die Annahme gehört korrigiert.
+**Plattform: macOS geprüft, Windows angelegt aber ungetestet.** Entwickelt und
+abgenommen auf macOS. Windows ist auf Nachfrage vorbereitet und läuft
+vermutlich, ist aber **auf keiner Windows-Maschine ausprobiert**:
+
+- **Trägt sicher:** pygame-ce, segno, Pillow und der Prozess-Pool haben
+  Windows-Wheels, und Windows spawnt Arbeiter wie macOS — der Schutz in
+  `__main__.py` deckt beide.
+- **Angelegt, ungetestet:** der Dateidialog über PowerShell mit WinForms
+  (`-STA` nötig) und die Schlafsperre über `SetThreadExecutionState`. Beide
+  sind eingekapselt: schlagen sie fehl, bleibt Drag & Drop und der
+  Bildschirmschoner. Schlechter als jetzt kann Windows dadurch nicht werden.
+- **Sieht anders aus:** SF Pro und SF Mono gibt es dort nicht, der
+  Schriftstapel fällt auf Segoe UI und Consolas zurück.
+- **Fällt aus:** das Dock-Icon über pyobjc ist macOS-only; unter Windows setzt
+  `pygame.display.set_icon` das Fensterbild, was dort ohnehin der richtige Weg
+  ist.
+
+Linux ist gar nicht bedacht: kein Dateidialog, keine Schlafsperre, Drag & Drop
+hängt am Fenstermanager.
 
 **Was der Sender kann (Charting-Session Q10, Q16, Q17, Q18):** Datei und
 Textschnipsel; fps, Frame-Bytes, ECC, Anzeigegröße, Grid — alle im
@@ -69,17 +83,19 @@ gemacht.
 
 - [QR-Encoder in Python: Maske pinnen, Version verriegeln, Tempo messen](issues/01-qr-encoder-python.md) — `segno` mit `mask=4`, `version=` und **`boost_error=False`**; Version und Geometrie in 20/20 Fällen identisch zum TS-Pfad, dekodierte Bytes ebenfalls. Tempo ist byte-gebunden bei ~177 KB/s Frame-Durchsatz → **rund 150 KB/s Nutzdurchsatz-Obergrenze**, einzelthreadig, vor Anzeigekosten.
 
-- [Fenster-Toolkit: welche Bildrate hält es auf macOS](issues/02-fenster-toolkit.md) — **pygame-ce für den Stream, tkinter für die Bedienung, beide im selben Prozess** (geprüft: 402 Durchläufe/s mit beiden Ereignisschleifen). Ganze Kette gemessen: **151 KB/s**, davon 92 % Kodieren und nur 1,5 % Anzeige. tkinter allein würde 40–55 % des Durchsatzes kosten. Falle: Homebrew-Python hat kein tkinter, das von uv verwaltete schon.
+- [Fenster-Toolkit: welche Bildrate hält es auf macOS](issues/02-fenster-toolkit.md) — **pygame-ce für den Stream** — die ursprünglich mitentschiedene tkinter-Bedienung ist gefallen, siehe Nachtrag: die Koexistenz-Messung prüfte nur, dass nichts abstürzt, nicht dass beide Fenster Klicks bekommen. Alles ist jetzt pygame, Bedienelemente von Hand gezeichnet. Ganze Kette gemessen: **151 KB/s**, davon 92 % Kodieren und nur 1,5 % Anzeige. tkinter allein würde 40–55 % des Durchsatzes kosten. Falle: Homebrew-Python hat kein tkinter, das von uv verwaltete schon.
 
 - [Woher bekommt der Python-Test seine Fountain-Vektoren?](issues/03-konformitaetsvektoren.md) — **vier goldene Stromhashes abgeschrieben, kein Generator, kein Node**; verifiziert, dass Python sie bit-genau reproduziert. Die Regeln stehen jetzt normativ in `docs/technical/golden-vectors.md` (Abschnitt Fountain carousel). QR-Referenz auf 782 Bytes Fingerabdrücke eingedampft. gzip: byte-genau nur unkomprimiert, sonst Entscheidung plus Round-Trip; `isPrecompressedType` wird mitgepinnt.
 
 - [Was passiert, wenn Sendeeinstellungen mitten im Stream verstellt werden?](issues/04-live-aenderung-semantik.md) — **den Web-Sender nachbauen: jede der fünf Änderungen startet den Strom neu**, mit neuer `sessionId` und `seq` auf 0. Technisch erzwungen ist das nur bei Frame-Bytes; Gleichlauf mit dem Referenz-Sender schlägt geretteten Fortschritt. Fenstergröße ändern bleibt frei, der Schieberegler löst erst beim Loslassen aus, und eine `generation`-Zählung muss die alte Renderschleife ablösen.
 
-- [Fensteraufteilung: Bedienung und QR-Stream in einem Fenster oder zwei?](issues/05-fensteraufteilung.md) — **zwei gewöhnliche Fenster mit Titelleiste**, tkinter für die Bedienung (380×600, drei Abschnitte), pygame für den Strom. Kein Vollbild, kein randloser Modus, keine Monitor-Auswahl: der zweite Monitor wird per Ziehen erreicht. Der „Nichts passiert?"-Hinweis wird eine hervorgehobene Statuszeile im Bedienfenster, kein Dialog und kein Banner über dem Strom.
+- [Fensteraufteilung: Bedienung und QR-Stream in einem Fenster oder zwei?](issues/05-fensteraufteilung.md) — **ein Fenster** — 300 px Seitenleiste links, QR-Bereich rechts (ursprünglich zwei Fenster, gefallen mit der tkinter-Bedienung; mehrere SDL-Fenster brauchen eine halbprivate API). Kein Vollbild, kein randloser Modus, keine Monitor-Auswahl: der zweite Monitor wird per Ziehen erreicht. Der „Nichts passiert?"-Hinweis wird eine hervorgehobene Statuszeile im Bedienfenster, kein Dialog und kein Banner über dem Strom.
 
 - [Kodieren über einen Prozess-Pool verteilen?](issues/09-prozess-pool.md) — **ja, von Anfang an**: 12 Arbeiter (16 ist messbar schlechter), **10,9×** auf 682 Frames/s, Pool-Aufsetzen 83 ms. Die Arbeiter geben das fertige Raster zurück, nicht die Matrix — die große IPC ist billiger als 68 % Hauptthread fürs Rastern. Danach limitiert nicht mehr der Sender, sondern der Empfänger.
 
 - [Protokoll nach Python portieren und gegen die Vektoren festnageln](issues/06-protokoll-portierung.md) — **`python-sender/decimen/` steht und ist dreifach belegt**: 425 Prüfungen gegen die goldenen Vektoren, Round-Trip gegen den echten TypeScript-Decoder über 15 % Frame-Verlust, und ein Handy auf decimen.app, das den Strom vom Bildschirm gelesen und SHA-256-verifiziert ausgepackt hat.
+
+- [Das Sender-Fenster bauen](issues/07-sender-fenster.md) — **ein pygame-Fenster**, 320 px Seitenleiste mit handgezeichneten Bedienelementen, QR-Bereich rechts. Die tkinter-Bedienung aus der Toolkit-Entscheidung reagierte auf keinen Klick (SDL und Tk streiten auf macOS um die NSApplication), daher alles auf pygame. Drag & Drop, Prozess-Pool, Schlafsperre, Kapazitätsfehler — abgenommen an einem echten Handy.
 
 ## Not yet specified
 
