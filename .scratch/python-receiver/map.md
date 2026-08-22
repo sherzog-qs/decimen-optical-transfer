@@ -85,6 +85,10 @@ TS-Version), und der Konformitätstest muss **beide** Python-Kopien prüfen.
 
 - [Bereichsauswahl: aufziehen wie Cmd-Shift-4](issues/04-bereichsauswahl.md) — **Aufziehen auf einem eingefrorenen Vollbild-Standbild, reines pygame**, Bereich in Punkten (pygame und Bildschirm 1:1, keine Umrechnung), verifiziert bis zur Dekodierung. Während des Empfangs neu aufziehbar ohne Neustart (Decoder hängt an der Stream-Identität, nicht am Bereich). UX-Lehre: grob rahmen ist robust, pixelgenau schneidet die Ruhezone an.
 
+- [Decode-Hälfte nach Python portieren und gegen die Vektoren festnageln](issues/05-decode-portierung.md) — **`python-receiver/decimen/` steht, dreifach belegt**: 167 Prüfungen gegen die Golden Vectors, Python↔Python über 15 % Verlust, und der **TypeScript-Encoder** → Python-Empfänger, Container rekonstruiert und SHA-256 verifiziert. `LTDecoder` mit Peeling-Kaskade, `parse_frame`/`classify_frame`/`unpack_file`/gunzip-Overflow-Schutz. Kein Encoder, kein Camera-Pfad.
+
+- [Empfänger-Fenster: Fortschritt, Statistik, Empfehlung, Speichern](issues/06-empfaenger-fenster-design.md) — **ein pygame-Fenster**, Seitenleiste plus **Live-Vorschau** des Bereichs (zum Nachjustieren über Citrix). Fortschritt über **gesammelte Frames** (der Code warnt vor dem Block-Balken); Fangrate zählt `frames_new − frames_redundant`. Empfehlung **nur bei schlechtem Empfang**, abgeleitet aus gemessener px/Modul. Am Ende Speicherdialog, SHA-256 vor dem Anbieten verifiziert, sonst verworfen.
+
 ## Not yet specified
 
 - **Verhalten bei sehr großen Dateien.** Der `LTDecoder` hält alle gelösten
