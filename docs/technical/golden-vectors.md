@@ -81,6 +81,66 @@ decoder and discard recovered blocks.
 The identity must not be a naive concatenation — `{k: 1, blockLen: 23}` and
 `{k: 12, blockLen: 3}` are different streams and must not collide.
 
+## Fountain carousel
+
+Which blocks a frame carries is derived from `seq` alone — sender and receiver
+never compare notes, so a second implementation that disagrees here produces a
+stream that simply never completes.
+
+`cycleLength(k)` is `2 * k`. For `pos = seq % cycleLength(k)`:
+
+- `pos < k` — **systematic**: the frame carries block `pos` alone.
+- otherwise — **repair**: degree `min(k, 4 + rnd() % 21)`, then that many
+  distinct `rnd() % k`, drawn in order from a splitmix32 stream seeded with the
+  **absolute** `seq`, so every cycle's repair frames differ.
+
+Both generators are 32-bit integer arithmetic throughout — no floating point,
+nothing an implementation can round differently:
+
+```
+frameSeed(sessionId, seq):
+  h = int32(imul(sessionId + 1, 0x9e3779b1) ^ int32(seq + 0x85ebca6b))
+  h = imul(h ^ (h >>> 13), 0xc2b2ae35)
+  return int32(h ^ (h >>> 16))
+
+splitmix32(seed):                     # successive calls advance s
+  s = int32(s + 0x9e3779b9)
+  t = imul(s ^ (s >>> 16), 0x21f0aaad)
+  t = imul(t ^ (t >>> 15), 0x735a2d97)
+  return uint32(t ^ (t >>> 15))
+```
+
+`imul` is a 32-bit multiply keeping the low 32 bits; `>>>` shifts the unsigned
+32-bit pattern.
+
+Blocks are laid out padded to a multiple of four bytes — `stride = ceil(blockLen
+/ 4) * 4` — the payload copied in at `b * stride` and the tail block
+zero-filled. A frame XORs its blocks over the full stride and emits the first
+`blockLen` bytes. **Every frame is exactly `blockLen` bytes**, including the one
+covering the short tail block.
+
+### Stream fingerprints
+
+Each row encodes `seq` 0..63, concatenates the frames, and takes FNV-1a over
+the result. The payload is `payload[i] = (i * 37 + (i >> 8) * 11) & 0xff` of
+length `k * blockLen - 7`.
+
+| k | blockLen | sessionId | fnv1a of 64 frames |
+|---|---|---|---|
+| 1 | 64 | 1 | `0xf6a115c5` |
+| 23 | 64 | 7 | `0x4a5d3eaa` |
+| 179 | 2933 | 4242 | `0x54f78d05` |
+| 716 | 1445 | 65535 | `0x75b73b85` |
+
+One hash covers `frameSeed`, `splitmix32`, the repair draw, the block padding
+and the XOR order together. The `k = 23` row is the only one whose 64 frames
+outrun the sweep and reach repair frames; the others pin the systematic half.
+
+An earlier robust-soliton stream (`dlog`, `solitonCdf`, `frameIndices`) is
+still pinned in `tests/fountain.test.ts` in case a future format wants it back.
+**It has not been emitted since wire v2** — a second implementation does not
+need it.
+
 ## Round-trip conformance
 
 `tests/transfer.test.ts` is the end-to-end harness, and the only test that

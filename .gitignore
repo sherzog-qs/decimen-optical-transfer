@@ -5,3 +5,6 @@ dist/
 dist-standalone/
 artifacts/
 scratch/
+.venv/
+__pycache__/
+*.pyc

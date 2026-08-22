@@ -1,0 +1,35 @@
+# QR-Referenzfingerabdrücke aus dem TS-Pfad (npm qrcode 1.5.4, maskPattern 4,
+# Byte-Modus). Eingabe je Fall: bytes((i*37+11)&0xFF) der angegebenen Länge,
+# mit b[0:4] = D1 C3 03 00.
+#
+# Spalten: fall  version  groesse  fnv1a(modulbits)  matrixgleich
+#
+# ACHTUNG zur letzten Spalte: segno und npm qrcode erzeugen NICHT dieselbe
+# Modulmatrix, sobald die Nutzlast die Kapazität nicht exakt füllt — die
+# Pad-Codewörter des ungenutzten Rests unterscheiden sich (siehe Ticket
+# „QR-Encoder in Python"). Der Fingerabdruck ist deshalb nur bei
+# matrixgleich=ja vergleichbar. Für alle anderen Zeilen gilt:
+#   * version und groesse MÜSSEN übereinstimmen (das fordert das Tiling),
+#   * die dekodierten Bytes MÜSSEN der Quelle entsprechen (selbstprüfend),
+#   * die Matrix selbst wird nicht verglichen.
+
+   200H  15   77 0x4a3f41f3  nein
+   200L   9   53 0x3bb9fb55  nein
+   200M  10   57 0x51e2da29  nein
+   200Q  12   65 0x164b425b  nein
+   500H  24  113 0xf7b5dd3d  nein
+   500L  15   77 0x5ffecd35  nein
+   500M  17   85 0x36565504  nein
+   500Q  21  101 0xc394bdad  nein
+  1000H  36  161 0x1814e912  nein
+  1000L  22  105 0xb082657c  nein
+  1000M  26  121 0x782d341d  nein
+  1000Q  31  141 0xc24ef4e7  nein
+  1465L  27  125 0x97258709  ja
+  1465M  32  145 0xa9dd808d  nein
+  1465Q  38  169 0x94f87121  nein
+  1850L  32  145 0x4b9c43f7  nein
+  1850M  36  161 0xc0a30e50  nein
+  2331L  36  161 0xe60ebff2  nein
+  2331M  40  177 0xaad594b2  ja
+  2953L  40  177 0x7c70901f  ja

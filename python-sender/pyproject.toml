@@ -1,0 +1,27 @@
+# Minimal für den Feldversuch aus Ticket "Protokoll nach Python portieren".
+# Startbefehl, CLI-Einstiegspunkt und README kommen aus Ticket "Verpackung".
+
+[project]
+name = "decimen-sender"
+version = "0.1.0"
+description = "Decimen optical transfer — sender, in Python"
+requires-python = ">=3.11"
+dependencies = [
+    "segno>=1.6",       # QR, mit pinnbarer Maske und verriegelbarer Version
+    "pygame-ce>=2.5",   # Stream-Fenster
+    "pillow>=10",       # Rasterhilfe
+]
+
+[dependency-groups]
+dev = [
+    "zxing-cpp>=2.2",   # nur für die Dekodierprobe im Konformitätstest
+]
+
+[tool.uv]
+# Kein Build: decimen wird importiert, nicht installiert.
+package = false
+# Nicht verhandelbar. Homebrews python@3.13 bringt kein tkinter mit (eigenes
+# Formel-Paket), das von uv verwaltete schon, mit Tk 9.0. Ohne diese Zeile
+# greift uv auf einer Entwicklermaschine das Homebrew-Python ab und das
+# Bedienfenster startet nicht. Gemessen in Ticket "Fenster-Toolkit".
+python-preference = "only-managed"
